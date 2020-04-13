@@ -161,7 +161,7 @@ ALS.R1R3 <- function(f = 10, lambda = 5, beta = 0.4, max.iter = 5,
       u.rated.i <- as.character(train[train$movieId==movie.id[i],]$userId)
       dev <- train[train$movieId==movie.id[i],]$dev
       q.tilde[,i] <- solve(p.tilde[,u.rated.i] %*% t(p.tilde[,u.rated.i]) + lambda* diag(f+1)) %*%
-        p.tilde[,u.rated.i] %*% (train[train$movieId==movie.id[i],]$rating - mu - bu[,u.rated.i] - au[,u.rated.i]*dev)
+      p.tilde[,u.rated.i] %*% (train[train$movieId==movie.id[i],]$rating - mu - bu[,u.rated.i] - au[,u.rated.i]*dev)
     }
     
     # update bi and q
@@ -212,7 +212,7 @@ ALS.R1R3 <- function(f = 10, lambda = 5, beta = 0.4, max.iter = 5,
     
     E = Sys.time()
     
-    cat("Time cost:", E-S, "\n")
+    cat("Time cost:", E-S, "min\n")
  }
   
 return(list(p = p, q = q,
