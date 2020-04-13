@@ -79,10 +79,10 @@ ALS <- function(data, train, test, f, maxIters, lambda=5){
     group_by(movieId) %>% 
     summarise(avgRating = mean(rating))
   
-  Users <- matrix(c(avgRatingByUser$avgRating, runif((f-1)*U, -1, 1)), nrow=f)
+  Users <- matrix(c(avgRatingByUser$avgRating, runif((f-1)*U, -1, 1)), nrow=f, byrow = T)
   colnames(Users) <- UserId
   
-  Movies <- matrix(c(avgRatingByMovie$avgRating, rnorm((f-1)*M, -1, 1)), nrow=f)
+  Movies <- matrix(c(avgRatingByMovie$avgRating, rnorm((f-1)*M, -1, 1)), nrow=f, byrow = T)
   colnames(Movies) <- MovieId
   
   trainRMSE <- rep(NA, maxIters)
@@ -118,8 +118,8 @@ ALS <- function(data, train, test, f, maxIters, lambda=5){
   return(list("User" = Users, 
               "Movie" = Movies, 
               "Rating" = ratings_est, 
-              "Train RMSE" = trainRMSE, 
-              "Test RMSE" = testRMSE) 
+              "TrainRMSE" = trainRMSE, 
+              "TestRMSE" = testRMSE) 
          )
 }
 
@@ -138,7 +138,18 @@ stopCluster(cl)
 ```
 
 ```{r}
-
+fs <- list(5, 10, 20, 30, 50)
+lambdas <- list(.1, .5, 1, 5, 10)
 ```
 
+```{r}
+trainRMSE = list()
+testRMSE = list()
+for(f in fs){
+  for(l in lambdas){
+    result <- ALS(data, train, test, f = f, maxIters = 10, lambda = l)
+    
+  }
+}
+```
 
