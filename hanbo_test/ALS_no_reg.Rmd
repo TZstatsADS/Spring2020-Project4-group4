@@ -12,7 +12,10 @@ library(parallel)
 
 # Load the data (in main.rmd)
 ```{r}
-data <- read.csv("../data/ml-latest-small/ratings.csv")
+# data <- read.csv("../data/ml-latest-small/ratings.csv")
+data_raw <- read.csv("../data/ml-latest-small/ratings.csv")%>%as_tibble()
+data_raw=(data_raw%>%group_by(movieId)%>%nest())[1:5,]%>%unnest()%>%ungroup() 
+data=(data_raw%>%group_by(userId)%>%nest())[1:8,]%>%unnest()%>%ungroup() #test
 set.seed(1)
 
 # train-test split (.8/.2)
