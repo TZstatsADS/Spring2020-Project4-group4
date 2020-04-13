@@ -123,6 +123,7 @@ ALS.R1R3 <- function(f = 10, lambda = 5, beta = 0.4, max.iter = 5,
   test_RMSE <- c()
   
   for (l in 1:max.iter) {
+    S = Sys.time()
     # Step 2: Fix q, solve p
     # we need new factors to add bu, bi into calculation
     q_idb <- rbind(rep(1,I), q)
@@ -206,8 +207,12 @@ ALS.R1R3 <- function(f = 10, lambda = 5, beta = 0.4, max.iter = 5,
     train_RMSE <- c(train_RMSE, train_RMSE_cur)
     
     test_RMSE_cur <- RMSE(test, est_rating)
-    cat("test RMSE:",test_RMSE_cur, "\n")
+    cat("test RMSE:",test_RMSE_cur, "\t")
     test_RMSE <- c(test_RMSE, test_RMSE_cur)
+    
+    E = Sys.time
+    
+    cat("Time cost:", E-S, "\n")
  }
   
 return(list(p = p, q = q,
