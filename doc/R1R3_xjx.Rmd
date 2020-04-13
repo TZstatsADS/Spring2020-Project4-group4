@@ -210,7 +210,7 @@ ALS.R1R3 <- function(f = 10, lambda = 5, beta = 0.4, max.iter = 5,
     cat("test RMSE:",test_RMSE_cur, "\t")
     test_RMSE <- c(test_RMSE, test_RMSE_cur)
     
-    E = Sys.time
+    E = Sys.time()
     
     cat("Time cost:", E-S, "\n")
  }
@@ -222,7 +222,7 @@ return(list(p = p, q = q,
 ```
 
 ```{r}
-result <- ALS.R1R3(f = 10, lambda = 5, beta = 0.4, max.iter = 30, train = data_train, test = data_test)
+result <- ALS.R1R3(f = 10, lambda = 5, beta = 0.4, max.iter = 10, train = data_train, test = data_test)
 ```
 
 ```{r}
