@@ -1,0 +1,113 @@
+---
+title: "test"
+output:
+  html_document:
+    df_print: paged
+  pdf_document: default
+---
+```{r}
+library(dplyr)
+library(Hmisc)
+library(anytime)
+library(tidyverse)
+library(lubridate)
+```
+
+```{r}
+data_raw <- read.csv("../data/ml-latest-small/ratings.csv")%>%as_tibble()
+data_raw=(data_raw%>%group_by(movieId)%>%nest())[1:5,]%>%unnest()%>%ungroup() 
+data_raw=(data_raw%>%group_by(userId)%>%nest())[1:8,]%>%unnest()%>%ungroup() #test
+```
+#Assigning time bins for temporal regularizations
+```{r}
+data_process_1 <- function(data) {
+     tmp <-data %>%
+            mutate(date = as.Date(anytime(timestamp))) %>%
+            mutate(year = year(ymd(date))) 
+    
+    tmp$Bin <- group_indices(tmp,year)
+    
+     return(tmp %>%
+             select(userId,movieId,rating,year,date,Bin,timestamp))
+}
+
+data<-data_process_1(data_raw)
+
+
+
+#Define a function to calculate RMSE ????????????????????
+RMSE <- function(rating, est_rating){
+  sqr_err <- function(obs){
+    sqr_error <- (obs[3] - est_rating[as.character(obs[2]), as.character(obs[1])])^2
+    return(sqr_error)
+  }
+  return(sqrt(mean(apply(rating, 1, sqr_err))))  
+}
+```
+
+
+```{r}
+#Alternating Least Squares  
+U <- length(unique(data$userId)) #Number of users
+I <- length(unique(data$movieId)) #Number of movies
+alpha <- 5
+beta <- 0.4
+
+max.iter <- 10
+```
+
+```{r}
+# als.function <- function(){
+  
+  p <- matrix(runif(U, -1, 1), ncol = U, nrow = I) #User matrix
+  colnames(p) <- as.character(1:U)
+  q <- matrix(runif(I, -1, 1), ncol = I, nrow = U) 
+  colnames(q) <- levels(as.factor(data$movieId)) #Movie Matrix
+
+  train_RMSE <- c()
+  test_RMSE <- c()
+  
+  
+  #Step 1, initialize q by assigning average rating for that movie as the first row.
+  
+  mean_rating_movie <- data %>% 
+    group_by(movieId) %>%
+    summarise(Mean.Rating = mean(rating)) %>%
+    pull(Mean.Rating) #Taking all mean ratings
+  
+  q[1,] <- as.vector(mean_rating_movie) #Assign mean ratings to first row
+  
+  mu <- mean(data$rating) #Average of all the mean ratings
+  
+  b.i <- mean_rating_movie - mu #Overall movie bias
+  
+  mean_rating_user <- data %>% 
+    group_by(userId) %>%
+    summarise(Mean.Rating = mean(rating)) %>%
+    pull(Mean.Rating)
+  
+  b.u <- mean_rating_user - mu #Overall user bias
+  
+  # new.data <- data %>%
+  #   group_by(Bin) %>%
+  #   summarise(Bias = mean(rating))
+  # 
+  # bin.bias <- new.data$Bias - mu #Bias for each bin (year)
+  # 
+  # b.i.bin <- data %>%
+  #   mutate(Bin.Bias = ifelse())
+  
+  mean_ratingdate_user <- data %>%
+    group_by(userId) %>%
+    summarise(t.u=as.Date(anytime(mean(timestamp))))
+  
+  tu <- mean_ratingdate_user #Mean bin for each user 
+  
+  bin.index <- unique(data$date) #Bin index (1:23) 
+```
+
+```{r}
+  data$Dev <- as.numeric(sign(data$date- tu$t.u[match(data$userId,tu$userId)]) *(as.numeric(abs((data$date- tu$t.u[match(data$userId,tu$userId)])))^0.4))
+```
+
+
