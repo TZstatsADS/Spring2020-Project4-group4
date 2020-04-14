@@ -170,7 +170,7 @@ for(f in 1:length(fs)){
 }
 stopCluster(cl)
 
-save(list(trainRMSE, testRMSE), file="out/baseAlsCV.RData")
+save(trainRMSE, testRMSE, file="../output/baseAlsCV.RData")
 
 ```
 
