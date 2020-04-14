@@ -22,13 +22,13 @@ data_raw=(data_raw%>%group_by(userId)%>%nest())[1:8,]%>%unnest()%>%ungroup() #te
 ```{r}
 data_process_1 <- function(data) {
      tmp <-data %>%
-            mutate(date = as.Date(anytime(timestamp))) %>%
-            mutate(year = year(ymd(date))) 
-    
-    tmp$Bin <- group_indices(tmp,year)
-    
+            mutate(date = anydate(data$timestamp)) %>%
+            mutate(year = year(ymd(date))) %>%
+            group_by(userId)%>%
+            mutate(ttu=as.numeric(date-mean(date)))%>%ungroup()%>%mutate(dev=sign(ttu)*abs(ttu)^beta)
+
      return(tmp %>%
-             select(userId,movieId,rating,year,date,Bin,timestamp))
+             select(userId,movieId,rating,year,date,ttu,dev,timestamp))
 }
 
 data<-data_process_1(data_raw)
@@ -107,7 +107,7 @@ max.iter <- 10
 ```
 
 ```{r}
-  data$Dev <- as.numeric(sign(data$date- tu$t.u[match(data$userId,tu$userId)]) *(as.numeric(abs((data$date- tu$t.u[match(data$userId,tu$userId)])))^0.4))
+
 ```
 
 
