@@ -192,7 +192,8 @@ ALS.R1R3 <- function(f = 10, lambda = 5, beta = 0.4, max.iter = 5,
     for (i in 1:nrow(train)){
       user = train[i,"userId"] %>% as.numeric
       movie = train[i, "movieId"] %>% as.character
-      au_dev_ui[user, movie] = au[user]*train[user,]$dev
+      # au_dev_ui[user, movie] = au[user]*train[user,]$dev
+      au_dev_ui[user, movie] = au[user]*train[i,]$dev
     }
     colnames(au_dev_ui) = NULL
     au_dev_ui = as.matrix(au_dev_ui)
@@ -226,7 +227,6 @@ return(list(p = p, q = q,
 }
 
 ```
-
 
 ```{r}
 ALS.R1R3_v1 <- function(f = 10, lambda = 5, beta = 0.4, max.iter = 5,
@@ -355,7 +355,7 @@ ALS.R1R3_v1 <- function(f = 10, lambda = 5, beta = 0.4, max.iter = 5,
     for (i in 1:nrow(train)){
       user = train[i,"userId"] %>% as.numeric
       movie = train[i, "movieId"] %>% as.character
-      au_dev_ui[user, movie] = au[user]*train[user,]$dev #***
+      au_dev_ui[user, movie] = au[user]*train[i,]$dev #***
       # au_dev_ui[user.id==user, movie.id==movie] = au[user.id==user]*train[i,]$dev
     }
     colnames(au_dev_ui) = NULL
@@ -721,15 +721,6 @@ return(list(p = p, q = q,
 ```
 
 
-
-
-```{r}
-# result <- ALS.R1R3(f = 10, lambda = 5, beta = 0.4, max.iter = 10, train = data_train, test = data_test)
-```
-
-```{r}
-# save(result, file = '../output/resultR1R3.Rdata')
-```
 
 
 ```{r}
