@@ -17,6 +17,8 @@ library(ggplot2)
 library(anytime)
 library(caret)
 library(parallel)
+
+cl <- makeCluster(4) #***
 ```
 
 ### Data
@@ -105,7 +107,7 @@ ALS.R1R3 <- function(f = 10, lambda = 5, beta = 0.4, maxIters = 5, data = data,
   
   MovieId <- levels(as.factor(data$movieId))
   M <- length(MovieId)
-
+  I<-M #***
   avgRatingByUser <- data %>% 
     group_by(userId) %>% 
     summarise(avgRating = mean(rating))
@@ -134,7 +136,7 @@ ALS.R1R3 <- function(f = 10, lambda = 5, beta = 0.4, maxIters = 5, data = data,
   
   # mean of all the ratings in train data set.
   Ave_rating <- mean(train$rating)
-  
+  mu<-Ave_rating #***
   trainRMSE <- rep(NA, maxIters)
   testRMSE <- rep(NA, maxIters)
   
