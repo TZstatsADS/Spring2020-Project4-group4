@@ -207,11 +207,6 @@ stopCluster(cl)
 save(trainRMSE_f, testRMSE_f, trainRMSE_lamd, testRMSE_lamd, file="../output/baseAlsCV.RData")
 ```
 
-
-```{r}
-# final_result <- ALS(data, train, test, f = fs[f], maxIters = , lambda =)
-```
-
 ```{r}
 load(file="../output/baseAlsCV.RData")
 ```
@@ -266,4 +261,8 @@ trainlamd +
 testlamd <- plot_cv(testRMSE_lamd)
 testlamd +
   labs(title="CV test_RMSE for lambda")
+```
+
+```{r}
+resultALS <- ALS(data, train, test, f = 5, maxIters =10 , lambda =5)
 ```
