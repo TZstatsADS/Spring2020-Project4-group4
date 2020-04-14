@@ -265,4 +265,54 @@ testlamd +
 
 ```{r}
 resultALS <- ALS(data, train, test, f = 5, maxIters =10 , lambda =5)
+save(resultALS, file = "../output/resultALS.RData")
+
 ```
+
+
+
+
+# P3
+
+```{r}
+
+load(file = "../output/resultALS.RData")
+source("../lib/P3.R")
+
+data=data
+train=train
+test=test
+
+result=resultALS
+```
+
+
+
+
+
+```{r}
+# lambda=c(1, 5, 10, 15, 20)
+# 
+# krr.cv.rmse <- matrix(0, nrow = length(lambda), ncol = 4)
+#   for(i in 1:length(lambda)){
+#     cat("lambda=", lambda[i], "\n")
+#     krr.cv.rmse[i,] <- krr.cv (dat_train=data, K.fold=3, lambda=lambda[i])
+#     
+#   }
+# save(krr.cv.rmse, file="../output/krr.cv.rmse.RData")
+```
+
+
+
+
+```{r}
+test=KRR.Post(lambda = 1, data = data, train = train, test = test)
+```
+
+
+
+
+```{r}
+test=krr.cv (dat_train=data, K.fold=2, lambda=1)
+```
+
