@@ -160,7 +160,7 @@ lambdas <- c(.01, .1, .5, 1, 5)
 ```
 
 ```{r, warning=FALSE, message=FALSE}
-cl <- makeCluster(4)
+cl <- makeCluster(8)
 
 maxIter <- 15
 colNM <- c(1:maxIter)[c(1:maxIter)%%3 ==1]
@@ -223,4 +223,38 @@ save(trainRMSE_f, testRMSE_f, trainRMSE_lamd, testRMSE_lamd, file="../output/bas
 # final_result <- ALS(data, train, test, f = fs[f], maxIters = , lambda =)
 ```
 
+```{r}
+load(file="../output/baseAlsCV.RData")
 
+```
+
+```{r}
+plot_cv<-function(df){
+  parameter=df%>%rownames()
+  iter=df%>%colnames()
+  tmp=df%>%as_tibble()%>%mutate(parameter=parameter)%>%pivot_longer(-parameter,names_to = "iter",values_to = "RMSE")%>%mutate(iter=as.numeric(iter))
+  plot=ggplot()+geom_line(data=tmp,mapping=aes(x=iter,y=RMSE,color=parameter))+theme_light()
+  return(plot)
+}
+```
+
+
+
+
+```{r}
+trainf=plot_cv(trainRMSE_f)
+trainf+labs(title="CV train_RMSE for f")
+```
+```{r}
+testf=plot_cv(testRMSE_f)
+testf+labs(title="CV test_RMSE for f")
+```
+
+```{r}
+trainlamd=plot_cv(trainRMSE_lamd)
+trainlamd+labs(title="CV train_RMSE for lambda")
+```
+```{r}
+testlamd=plot_cv(testRMSE_lamd)
+testlamd+labs(title="CV test_RMSE for lambda")
+```
