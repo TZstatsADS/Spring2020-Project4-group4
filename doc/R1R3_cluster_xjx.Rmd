@@ -46,10 +46,10 @@ data_test <- data[-train_ind, ]
 ```{r}
 RMSE <- function(rating, est_rating){
   sqr_err <- function(id){
-    sqr_error <- (as.numeric(rating[i,3]) - est_rating[as.character(rating[i,1]), as.character(rating[i,2])])^2
+    sqr_error <- (as.numeric(rating[id,3]) - est_rating[as.character(rating[id,1]), as.character(rating[id,2])])^2
     return(sqr_error)
   }
-  error = lapply(1:nrow(rating), sqr_err) %>% unlist()
+  error = sapply(1:nrow(rating), sqr_err)
   return(sqrt(mean(error)))  
 }
 ```
