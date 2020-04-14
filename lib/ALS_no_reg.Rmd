@@ -109,8 +109,9 @@ ALS <- function(data, train, test, f, maxIters, lambda=5){
     trainRMSE[iter] <- RMSE(train, est_rating)
     testRMSE[iter] <- RMSE(test, est_rating)
     
-    cat("Iter", iter, "  RMSE for train set is:", trainRMSE[iter], "\t RMSE for test set is:", testRMSE[iter], "\n")
-    
+    # cat("Iter", iter, "  RMSE for train set is:", trainRMSE[iter], "\t RMSE for test set is:", testRMSE[iter], "\n")
+    cat(".") 
+    if(iter==maxIters) cat("\n")
     iter <- iter + 1
   }
   # Result
@@ -137,19 +138,39 @@ system.time(
 stopCluster(cl)
 ```
 
+# CV
 ```{r}
-fs <- list(5, 10, 20, 30, 50)
-lambdas <- list(.1, .5, 1, 5, 10)
+fs <- c(5, 10, 20, 30, 50)
+lambdas <- c(.01, .1, .5, 1, 5)
 ```
 
-```{r}
-trainRMSE = list()
-testRMSE = list()
-for(f in fs){
-  for(l in lambdas){
-    result <- ALS(data, train, test, f = f, maxIters = 10, lambda = l)
+```{r, warning=FALSE, message=FALSE}
+cl <- makeCluster(4)
+
+trainRMSE <- matrix(NA, nrow=length(fs), ncol=length(lambdas))
+testRMSE <- matrix(NA, nrow=length(fs), ncol=length(lambdas))
+
+colnames(trainRMSE) <- lambdas
+colnames(testRMSE) <- lambdas
+
+row.names(trainRMSE) <- fs
+row.names(testRMSE) <- fs
+
+for(f in 1:length(fs)){
+  for(l in 1:length(lambdas)){
+    t = Sys.time()
+    system.time(
+      result <- ALS(data, train, test, f = fs[f], maxIters = 10, lambda = lambdas[l])
+    )
+    print(paste0("f: ", fs[f], "    lambda: ", lambdas[l], "    Time: ", Sys.time()-t))
     
+    trainRMSE[f, l] <- (result$TrainRMSE)[10]
+    testRMSE[f, l] <- (result$TestRMSE)[10]
   }
 }
+stopCluster(cl)
+
+save(list(trainRMSE, testRMSE), file="out/baseAlsCV.RData")
+
 ```
 
