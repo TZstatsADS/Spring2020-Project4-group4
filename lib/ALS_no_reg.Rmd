@@ -217,11 +217,25 @@ load(file="../output/baseAlsCV.RData")
 ```
 
 ```{r}
-plot_cv<-function(df){
-  parameter=df%>%rownames()
-  iter=df%>%colnames()
-  tmp=df%>%as_tibble()%>%mutate(parameter=parameter)%>%pivot_longer(-parameter,names_to = "iter",values_to = "RMSE")%>%mutate(iter=as.numeric(iter))
-  plot=ggplot()+geom_line(data=tmp,mapping=aes(x=iter,y=RMSE,color=parameter))+theme_light()
+plot_cv <- function(df){
+  parameter=df %>% 
+    rownames()
+  iter <- df %>% 
+    colnames()
+  tmp <- df %>%
+    as_tibble() %>%
+    mutate(parameter=parameter) %>%
+    pivot_longer(-parameter,
+                 names_to = "iter",
+                 values_to = "RMSE") %>%
+    mutate(iter=as.numeric(iter))
+  plot <- ggplot() +
+    geom_line(data=tmp,
+              mapping=aes(x=iter,
+                          y=RMSE,
+                          color=parameter)) + 
+    theme_light()
+  
   return(plot)
 }
 ```
@@ -230,22 +244,26 @@ plot_cv<-function(df){
 
 
 ```{r}
-trainf=plot_cv(trainRMSE_f)
-trainf+labs(title="CV train_RMSE for f")
+trainf <- plot_cv(trainRMSE_f)
+trainf +
+  labs(title="CV train_RMSE for f")
 ```
 
 ```{r}
 testf=plot_cv(testRMSE_f)
-testf+labs(title="CV test_RMSE for f")
+testf +
+  labs(title="CV test_RMSE for f")
 ```
 
 ```{r}
-trainlamd=plot_cv(trainRMSE_lamd)
-trainlamd+labs(title="CV train_RMSE for lambda")
+trainlamd <- plot_cv(trainRMSE_lamd)
+trainlamd + 
+  labs(title="CV train_RMSE for lambda")
 ```
 
 
 ```{r}
-testlamd=plot_cv(testRMSE_lamd)
-testlamd+labs(title="CV test_RMSE for lambda")
+testlamd <- plot_cv(testRMSE_lamd)
+testlamd +
+  labs(title="CV test_RMSE for lambda")
 ```
