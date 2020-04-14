@@ -87,12 +87,6 @@ findSolve <- function(id, solveBy, train, lambda, user_mat, movie_mat, au, bu, b
   else return("Please let matSolv be in right way")
 }
 
-change_audev = function(id, train = train, au = au,  au_dev_ui){
-  user = as.character(train[id,"userId"])
-  movie = as.character(train[id, "movieId"])
-  au_dev_ui[user, movie] = au[,user]*train[id, "dev"]
-  return(au_dev_ui)
-}
 ```
 
 ### ALS R1 + R3
