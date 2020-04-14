@@ -33,6 +33,17 @@ RMSE <- function(rating, est_rating){
   return(sqrt(mean(apply(rating, 1, sqr_err))))  
 }
 
+RMSE_yq <- function(rating, est_rating){
+  est_rating <- cbind("userId"=as.integer(row.names(est_rating)), est_rating)
+  resultMat <- est_rating %>% 
+    as_tibble() %>% 
+    pivot_longer(-userId, names_to = "movieId", values_to = "est_rating") %>% 
+    transmute(userId = as.integer(userId), movieId = as.integer(movieId), est_rating = as.double(est_rating)) %>% 
+    inner_join(rating, by = c("userId", "movieId")) %>% 
+    mutate(S.err = (est_rating - rating)^2)
+  return(sqrt(mean(resultMat$S.err)))
+}
+
 minFunc <- function(rating, matSolv, lambda){
     solve(matSolv %*% t(matSolv) + lambda * diag(f)) %*% matSolv %*% rating
   }
@@ -85,17 +96,17 @@ ALS <- function(data, train, test, f, maxIters, lambda=5){
   Movies <- matrix(c(avgRatingByMovie$avgRating, rnorm((f-1)*M, -1, 1)), nrow=f, byrow = T)
   colnames(Movies) <- MovieId
   
-  trainRMSE <- rep(NA, maxIters)
-  testRMSE <- rep(NA, maxIters)
-  
-  
   clusterExport(cl, "minFunc", envir = environment())
   clusterExport(cl, "f", envir = environment())
   clusterExport(cl, "UserId", envir = environment())
   clusterExport(cl, "MovieId", envir = environment())
   
+  trainRMSE <- rep(NA, maxIters%/%3)
+  testRMSE <- rep(NA, maxIters%/%3)
+  
   iter <- 1
   while(iter <= maxIters){
+    st <- Sys.time()
     # Fix Movie, solve User
     clusterExport(cl, "Movies", envir = environment())
     clusterExport(cl, "Users", envir = environment())
@@ -104,24 +115,31 @@ ALS <- function(data, train, test, f, maxIters, lambda=5){
     clusterExport(cl, "Movies", envir = environment())
     clusterExport(cl, "Users", envir = environment())
     Movies <- parSapply(cl, as.character(MovieId), findSolve, solveBy="Users", train = train, lambda = lambda, USE.NAMES = T)
-    # RMSE 
-    est_rating <- t(Users) %*% Movies
-    trainRMSE[iter] <- RMSE(train, est_rating)
-    testRMSE[iter] <- RMSE(test, est_rating)
+    # cat("Iter:", iter,  "\t Time spent:", round(Sys.time()-st, 3), "s\n")
     
-    # cat("Iter", iter, "  RMSE for train set is:", trainRMSE[iter], "\t RMSE for test set is:", testRMSE[iter], "\n")
-    cat(".") 
+    if(iter%%3==1){
+      est_rating <- t(Users) %*% Movies
+      
+      trainRMSE[iter%/%3+1] <- RMSE(train, est_rating)
+      testRMSE[iter%/%3+1] <- RMSE(test, est_rating)
+    }
+    
+    cat(".")
     if(iter==maxIters) cat("\n")
     iter <- iter + 1
   }
-  # Result
-  ratings_est <- est_rating
+  # RMSE 
+  # est_rating <- t(Users) %*% Movies
+  # trainRMSE <- RMSE(train, est_rating)
+  # testRMSE <- RMSE(test, est_rating)
+  
+  
+  
   return(list("User" = Users, 
               "Movie" = Movies, 
-              "Rating" = ratings_est, 
+              "Rating" = est_rating, 
               "TrainRMSE" = trainRMSE, 
-              "TestRMSE" = testRMSE) 
-         )
+              "TestRMSE" = testRMSE))
 }
 
 ```
@@ -130,47 +148,78 @@ ALS <- function(data, train, test, f, maxIters, lambda=5){
 ```{r, warning=FALSE, message=FALSE}
 # set the number of cores to use
 cl <- makeCluster(4)
-
-system.time(
-  result <- ALS(data, train, test, f = 10, maxIters = 10, lambda = 5)
-  )
-
+result <- ALS(data, train, test, f = 10, maxIters = 15, lambda = 1)
 stopCluster(cl)
 ```
 
 # CV
 ```{r}
-fs <- c(5, 10, 20, 30, 50)
+source("../lib/cross_validation.R")
+fs <- c(5, 10, 15, 20)
 lambdas <- c(.01, .1, .5, 1, 5)
 ```
 
 ```{r, warning=FALSE, message=FALSE}
 cl <- makeCluster(4)
 
-trainRMSE <- matrix(NA, nrow=length(fs), ncol=length(lambdas))
-testRMSE <- matrix(NA, nrow=length(fs), ncol=length(lambdas))
+maxIter <- 15
 
-colnames(trainRMSE) <- lambdas
-colnames(testRMSE) <- lambdas
+# maxIter vs. f
+trainRMSE_f <- matrix(NA, nrow=length(fs), ncol=(maxIter%/%3))
+testRMSE_f <- matrix(NA, nrow=length(fs), ncol=(maxIter%/%3))
 
-row.names(trainRMSE) <- fs
-row.names(testRMSE) <- fs
+colnames(trainRMSE_f) <- c(1:(maxIter%/%3))
+colnames(testRMSE_f) <-  c(1:(maxIter%/%3))
 
+row.names(trainRMSE_f) <- fs
+row.names(testRMSE_f) <- fs
+
+
+
+# maxIter vs. lambda
+trainRMSE_lamd <- matrix(NA, nrow=length(lambdas), ncol=(maxIter%/%3))
+testRMSE_lamd <- matrix(NA, nrow=length(lambdas), ncol=(maxIter%/%3))
+
+colnames(trainRMSE_lamd) <- c(1:(maxIter%/%3))
+colnames(testRMSE_lamd) <-  c(1:(maxIter%/%3))
+
+row.names(trainRMSE_lamd) <- lambdas
+row.names(testRMSE_lamd) <- lambdas
+
+# maxIter vs. f
 for(f in 1:length(fs)){
-  for(l in 1:length(lambdas)){
-    t = Sys.time()
-    system.time(
-      result <- ALS(data, train, test, f = fs[f], maxIters = 10, lambda = lambdas[l])
-    )
-    print(paste0("f: ", fs[f], "    lambda: ", lambdas[l], "    Time: ", Sys.time()-t))
+  t = Sys.time()
     
-    trainRMSE[f, l] <- (result$TrainRMSE)[10]
-    testRMSE[f, l] <- (result$TestRMSE)[10]
-  }
+  result <- cv.functionYQ(train, K=5, f = fs[f], lambda = 1, maxIter=maxIter)
+    
+    
+  print(paste0("", "f: ", fs[f], "    lambda: ", 1, "    Time: ", Sys.time()-t))
+    
+  trainRMSE_f[f, ] <- (result$mean_train_rmse)
+  testRMSE_f[f, ] <- (result$mean_test_rmse)
 }
+
+# maxIter vs. lambda
+for(l in 1:length(lambdas)){
+  t = Sys.time()
+    
+  result <- cv.functionYQ(train, K=5, f = 10, lambda = lambdas[l], maxIter=maxIter)
+    
+    
+  print(paste0("", "f: ", 10, "    lambda: ", lambdas[l], "    Time: ", Sys.time()-t))
+    
+  trainRMSE_lamd[l, ] <- (result$mean_train_rmse)
+  testRMSE_lamd[l, ] <- (result$mean_test_rmse)
+}
+
 stopCluster(cl)
 
-save(trainRMSE, testRMSE, file="../output/baseAlsCV.RData")
+save(trainRMSE_f, testRMSE_f, trainRMSE_lamd, testRMSE_lamd, file="../output/baseAlsCV.RData")
 
 ```
+
+```{r}
+# final_result <- ALS(data, train, test, f = fs[f], maxIters = , lambda =)
+```
+
 
