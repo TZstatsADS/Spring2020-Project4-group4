@@ -33,17 +33,6 @@ RMSE <- function(rating, est_rating){
   return(sqrt(mean(apply(rating, 1, sqr_err))))  
 }
 
-RMSE_yq <- function(rating, est_rating){
-  est_rating <- cbind("userId"=as.integer(row.names(est_rating)), est_rating)
-  resultMat <- est_rating %>% 
-    as_tibble() %>% 
-    pivot_longer(-userId, names_to = "movieId", values_to = "est_rating") %>% 
-    transmute(userId = as.integer(userId), movieId = as.integer(movieId), est_rating = as.double(est_rating)) %>% 
-    inner_join(rating, by = c("userId", "movieId")) %>% 
-    mutate(S.err = (est_rating - rating)^2)
-  return(sqrt(mean(resultMat$S.err)))
-}
-
 minFunc <- function(rating, matSolv, lambda){
     solve(matSolv %*% t(matSolv) + lambda * diag(f)) %*% matSolv %*% rating
   }
