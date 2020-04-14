@@ -215,8 +215,8 @@ for(l in 1:length(lambdas)){
 stopCluster(cl)
 
 save(trainRMSE_f, testRMSE_f, trainRMSE_lamd, testRMSE_lamd, file="../output/baseAlsCV.RData")
-
 ```
+
 
 ```{r}
 # final_result <- ALS(data, train, test, f = fs[f], maxIters = , lambda =)
