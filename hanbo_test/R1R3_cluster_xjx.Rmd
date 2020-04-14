@@ -114,10 +114,10 @@ ALS.R1R3 <- function(f = 10, lambda = 5, beta = 0.4, maxIters = 5, data = data,
     group_by(movieId) %>% 
     summarise(avgRating = mean(rating))
   
-  Users <- matrix(c(avgRatingByUser$avgRating, runif((f-1)*U, -10, 10)), nrow=f,byrow = T)
+  Users <- matrix(c(avgRatingByUser$avgRating, runif((f-1)*U, -10, 10)), nrow=f)
   colnames(Users) <- UserId
   
-  Movies <- matrix(c(avgRatingByMovie$avgRating, rnorm((f-1)*M, -10, 10)), nrow=f,byrow = T)
+  Movies <- matrix(c(avgRatingByMovie$avgRating, rnorm((f-1)*M, -10, 10)), nrow=f)
   colnames(Movies) <- MovieId
   
   bu <- matrix(rep(0, U), ncol = U)
