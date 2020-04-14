@@ -185,7 +185,7 @@ ALS.R1R3 <- function(f = 10, lambda = 5, beta = 0.4, maxIters = 5, data = data,
       bi_ui[u, ] <- bi
     }
     
-    au_mat <- matrix(rep(au,I),nrow=U,byrow = F)
+    au_mat <- matrix(rep(au,M),nrow=U,byrow = F)
     dev_mat <- all_data %>%
       unique() %>%
       select(userId, movieId, dev) %>%
@@ -198,7 +198,7 @@ ALS.R1R3 <- function(f = 10, lambda = 5, beta = 0.4, maxIters = 5, data = data,
 
     au_dev_ui <- as.matrix(au_dev_ui)
     
-    mu_ui <- matrix(rep(mu, U*I), ncol = I)
+    mu_ui <- matrix(rep(Ave_rating, U*M), ncol = M)
     
     R <- mat + mu_ui + bu_ui + bi_ui + au_dev_ui
     
@@ -222,6 +222,10 @@ ALS.R1R3 <- function(f = 10, lambda = 5, beta = 0.4, maxIters = 5, data = data,
               "Test RMSE" = testRMSE) 
          )
 }
+```
+
+```{r}
+cl = makeCluster(8)
 ```
 
 ```{r}
