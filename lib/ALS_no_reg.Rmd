@@ -163,13 +163,14 @@ lambdas <- c(.01, .1, .5, 1, 5)
 cl <- makeCluster(4)
 
 maxIter <- 15
+colNM <- c(1:maxIter)[c(1:maxIter)%%3 ==1]
 
 # maxIter vs. f
 trainRMSE_f <- matrix(NA, nrow=length(fs), ncol=(maxIter%/%3))
 testRMSE_f <- matrix(NA, nrow=length(fs), ncol=(maxIter%/%3))
 
-colnames(trainRMSE_f) <- c(1:(maxIter%/%3))
-colnames(testRMSE_f) <-  c(1:(maxIter%/%3))
+colnames(trainRMSE_f) <- colNM
+colnames(testRMSE_f) <-  colNM
 
 row.names(trainRMSE_f) <- fs
 row.names(testRMSE_f) <- fs
@@ -180,8 +181,8 @@ row.names(testRMSE_f) <- fs
 trainRMSE_lamd <- matrix(NA, nrow=length(lambdas), ncol=(maxIter%/%3))
 testRMSE_lamd <- matrix(NA, nrow=length(lambdas), ncol=(maxIter%/%3))
 
-colnames(trainRMSE_lamd) <- c(1:(maxIter%/%3))
-colnames(testRMSE_lamd) <-  c(1:(maxIter%/%3))
+colnames(trainRMSE_lamd) <- colNM
+colnames(testRMSE_lamd) <-  colNM
 
 row.names(trainRMSE_lamd) <- lambdas
 row.names(testRMSE_lamd) <- lambdas
