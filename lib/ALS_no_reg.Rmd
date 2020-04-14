@@ -214,7 +214,6 @@ save(trainRMSE_f, testRMSE_f, trainRMSE_lamd, testRMSE_lamd, file="../output/bas
 
 ```{r}
 load(file="../output/baseAlsCV.RData")
-
 ```
 
 ```{r}
@@ -234,6 +233,7 @@ plot_cv<-function(df){
 trainf=plot_cv(trainRMSE_f)
 trainf+labs(title="CV train_RMSE for f")
 ```
+
 ```{r}
 testf=plot_cv(testRMSE_f)
 testf+labs(title="CV test_RMSE for f")
@@ -243,6 +243,8 @@ testf+labs(title="CV test_RMSE for f")
 trainlamd=plot_cv(trainRMSE_lamd)
 trainlamd+labs(title="CV train_RMSE for lambda")
 ```
+
+
 ```{r}
 testlamd=plot_cv(testRMSE_lamd)
 testlamd+labs(title="CV test_RMSE for lambda")
