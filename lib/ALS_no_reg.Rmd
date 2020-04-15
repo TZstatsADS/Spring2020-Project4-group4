@@ -144,67 +144,95 @@ stopCluster(cl)
 # CV
 ```{r}
 source("../lib/cross_validation.R")
+source("../lib/P3.R")
+
 fs <- c(5, 10, 15, 20)
-lambdas <- c(.01, .1, .5, 1, 5)
+lambdas_als <- c(1, 5, 8, 10)
+lambdas_P <- c(1, 5, 10, 15, 20)
+sigmas <- c(1,2,3,4,5)
+
+cv.df <- expand.grid("f"=fs, 
+                     "lambda_als"=lambda_als, 
+                     "lambda_p"=lambda_P, 
+                     "sigma" =sigmas)
 ```
 
+```{r}
+ALS_KRR <- function(data, train, test, f, maxIters, lambda_als, lambda_p, sigma){
+  result <- ALS(data, train, test, f, maxIters, lambda=5)
+  
+  KRR.Post(lambda=lambda_p, sigma=sigma, data, train, test)
+  
+}
+```
+
+```{r}
+cv.result <- cv.df %>% 
+  mutate(cvResults)
+```
+
+
+
+
+
+
 ```{r, warning=FALSE, message=FALSE}
-cl <- makeCluster(8)
-
-maxIter <- 15
-colNM <- c(1:maxIter)[c(1:maxIter)%%3 ==1]
-
-# maxIter vs. f
-trainRMSE_f <- matrix(NA, nrow=length(fs), ncol=(maxIter%/%3))
-testRMSE_f <- matrix(NA, nrow=length(fs), ncol=(maxIter%/%3))
-
-colnames(trainRMSE_f) <- colNM
-colnames(testRMSE_f) <-  colNM
-
-row.names(trainRMSE_f) <- fs
-row.names(testRMSE_f) <- fs
-
-
-
-# maxIter vs. lambda
-trainRMSE_lamd <- matrix(NA, nrow=length(lambdas), ncol=(maxIter%/%3))
-testRMSE_lamd <- matrix(NA, nrow=length(lambdas), ncol=(maxIter%/%3))
-
-colnames(trainRMSE_lamd) <- colNM
-colnames(testRMSE_lamd) <-  colNM
-
-row.names(trainRMSE_lamd) <- lambdas
-row.names(testRMSE_lamd) <- lambdas
-
-# maxIter vs. f
-for(f in 1:length(fs)){
-  t = Sys.time()
-    
-  result <- cv.functionYQ(train, K=5, f = fs[f], lambda = 1, maxIter=maxIter)
-    
-    
-  print(paste0("", "f: ", fs[f], "    lambda: ", 1, "    Time: ", Sys.time()-t))
-    
-  trainRMSE_f[f, ] <- (result$mean_train_rmse)
-  testRMSE_f[f, ] <- (result$mean_test_rmse)
-}
-
-# maxIter vs. lambda
-for(l in 1:length(lambdas)){
-  t = Sys.time()
-    
-  result <- cv.functionYQ(train, K=5, f = 10, lambda = lambdas[l], maxIter=maxIter)
-    
-    
-  print(paste0("", "f: ", 10, "    lambda: ", lambdas[l], "    Time: ", Sys.time()-t))
-    
-  trainRMSE_lamd[l, ] <- (result$mean_train_rmse)
-  testRMSE_lamd[l, ] <- (result$mean_test_rmse)
-}
-
-stopCluster(cl)
-
-save(trainRMSE_f, testRMSE_f, trainRMSE_lamd, testRMSE_lamd, file="../output/baseAlsCV.RData")
+# cl <- makeCluster(8)
+# 
+# maxIter <- 15
+# colNM <- c(1:maxIter)[c(1:maxIter)%%3 ==1]
+# 
+# # maxIter vs. f
+# trainRMSE_f <- matrix(NA, nrow=length(fs), ncol=(maxIter%/%3))
+# testRMSE_f <- matrix(NA, nrow=length(fs), ncol=(maxIter%/%3))
+# 
+# colnames(trainRMSE_f) <- colNM
+# colnames(testRMSE_f) <-  colNM
+# 
+# row.names(trainRMSE_f) <- fs
+# row.names(testRMSE_f) <- fs
+# 
+# 
+# 
+# # maxIter vs. lambda
+# trainRMSE_lamd <- matrix(NA, nrow=length(lambdas), ncol=(maxIter%/%3))
+# testRMSE_lamd <- matrix(NA, nrow=length(lambdas), ncol=(maxIter%/%3))
+# 
+# colnames(trainRMSE_lamd) <- colNM
+# colnames(testRMSE_lamd) <-  colNM
+# 
+# row.names(trainRMSE_lamd) <- lambdas
+# row.names(testRMSE_lamd) <- lambdas
+# 
+# # maxIter vs. f
+# for(f in 1:length(fs)){
+#   t = Sys.time()
+#     
+#   result <- cv.functionYQ(train, K=5, f = fs[f], lambda = 1, maxIter=maxIter)
+#     
+#     
+#   print(paste0("", "f: ", fs[f], "    lambda: ", 1, "    Time: ", Sys.time()-t))
+#     
+#   trainRMSE_f[f, ] <- (result$mean_train_rmse)
+#   testRMSE_f[f, ] <- (result$mean_test_rmse)
+# }
+# 
+# # maxIter vs. lambda
+# for(l in 1:length(lambdas)){
+#   t = Sys.time()
+#     
+#   result <- cv.functionYQ(train, K=5, f = 10, lambda = lambdas[l], maxIter=maxIter)
+#     
+#     
+#   print(paste0("", "f: ", 10, "    lambda: ", lambdas[l], "    Time: ", Sys.time()-t))
+#     
+#   trainRMSE_lamd[l, ] <- (result$mean_train_rmse)
+#   testRMSE_lamd[l, ] <- (result$mean_test_rmse)
+# }
+# 
+# stopCluster(cl)
+# 
+# save(trainRMSE_f, testRMSE_f, trainRMSE_lamd, testRMSE_lamd, file="../output/baseAlsCV.RData")
 ```
 
 ```{r}
@@ -276,14 +304,6 @@ save(resultALS, file = "../output/resultALS.RData")
 
 ```{r}
 
-load(file = "../output/resultALS.RData")
-source("../lib/P3.R")
-
-data=data
-train=train
-test=test
-
-result=resultALS
 ```
 
 
@@ -291,8 +311,7 @@ result=resultALS
 
 
 ```{r}
-lambda=c(1, 5, 10, 15, 20)
-sigma=c(1,2,3,4,5)
+
 # krr.cv.rmse <- matrix(0, nrow = length(lambda), ncol = 4)
 #   for(i in 1:length(lambda)){
 #     for (j in 1:length(sigma)){
