@@ -291,15 +291,16 @@ result=resultALS
 
 
 ```{r}
-# lambda=c(1, 5, 10, 15, 20)
-# 
-# krr.cv.rmse <- matrix(0, nrow = length(lambda), ncol = 4)
-#   for(i in 1:length(lambda)){
-#     cat("lambda=", lambda[i], "\n")
-#     krr.cv.rmse[i,] <- krr.cv (dat_train=data, K.fold=3, lambda=lambda[i])
-#     
-#   }
-# save(krr.cv.rmse, file="../output/krr.cv.rmse.RData")
+lambda=c(1, 5, 10, 15, 20)
+sigma=c(1,2,3,4,5)
+krr.cv.rmse <- matrix(0, nrow = length(lambda), ncol = 4)
+  for(i in 1:length(lambda)){
+    for (j in 1:length(sigma)){
+    cat("lambda=", lambda[i],"sigma=", sigma[j], "\n")
+    krr.cv.rmse[i,] <- krr.cv (dat_train=data, K.fold=3, lambda=lambda[i],sigma=sigma[j])
+    }
+  }
+save(krr.cv.rmse, file="../output/krr.cv.rmse.RData")
 ```
 
 
@@ -313,6 +314,6 @@ test=KRR.Post(lambda = 1, data = data, train = train, test = test)
 
 
 ```{r}
-test=krr.cv (dat_train=data, K.fold=2, lambda=1)
+test=krr.cv (dat_train=data, K.fold=2, lambda=1,sigma=1.5)
 ```
 
