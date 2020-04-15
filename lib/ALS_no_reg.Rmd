@@ -85,17 +85,17 @@ ALS <- function(data, train, test, f, maxIters, lambda=5){
   Movies <- matrix(c(avgRatingByMovie$avgRating, rnorm((f-1)*M, -1, 1)), nrow=f, byrow = T)
   colnames(Movies) <- MovieId
   
-  trainRMSE <- rep(NA, maxIters)
-  testRMSE <- rep(NA, maxIters)
-  
-  
   clusterExport(cl, "minFunc", envir = environment())
   clusterExport(cl, "f", envir = environment())
   clusterExport(cl, "UserId", envir = environment())
   clusterExport(cl, "MovieId", envir = environment())
   
+  trainRMSE <- rep(NA, maxIters%/%3)
+  testRMSE <- rep(NA, maxIters%/%3)
+  
   iter <- 1
   while(iter <= maxIters){
+    st <- Sys.time()
     # Fix Movie, solve User
     clusterExport(cl, "Movies", envir = environment())
     clusterExport(cl, "Users", envir = environment())
@@ -104,24 +104,31 @@ ALS <- function(data, train, test, f, maxIters, lambda=5){
     clusterExport(cl, "Movies", envir = environment())
     clusterExport(cl, "Users", envir = environment())
     Movies <- parSapply(cl, as.character(MovieId), findSolve, solveBy="Users", train = train, lambda = lambda, USE.NAMES = T)
-    # RMSE 
-    est_rating <- t(Users) %*% Movies
-    trainRMSE[iter] <- RMSE(train, est_rating)
-    testRMSE[iter] <- RMSE(test, est_rating)
+    # cat("Iter:", iter,  "\t Time spent:", round(Sys.time()-st, 3), "s\n")
     
-    # cat("Iter", iter, "  RMSE for train set is:", trainRMSE[iter], "\t RMSE for test set is:", testRMSE[iter], "\n")
-    cat(".") 
+    if(iter%%3==1){
+      est_rating <- t(Users) %*% Movies
+      
+      trainRMSE[iter%/%3+1] <- RMSE(train, est_rating)
+      testRMSE[iter%/%3+1] <- RMSE(test, est_rating)
+    }
+    
+    cat(".")
     if(iter==maxIters) cat("\n")
     iter <- iter + 1
   }
-  # Result
-  ratings_est <- est_rating
+  # RMSE 
+  # est_rating <- t(Users) %*% Movies
+  # trainRMSE <- RMSE(train, est_rating)
+  # testRMSE <- RMSE(test, est_rating)
+  
+  
+  
   return(list("User" = Users, 
               "Movie" = Movies, 
-              "Rating" = ratings_est, 
+              "Rating" = est_rating, 
               "TrainRMSE" = trainRMSE, 
-              "TestRMSE" = testRMSE) 
-         )
+              "TestRMSE" = testRMSE))
 }
 
 ```
@@ -130,47 +137,182 @@ ALS <- function(data, train, test, f, maxIters, lambda=5){
 ```{r, warning=FALSE, message=FALSE}
 # set the number of cores to use
 cl <- makeCluster(4)
-
-system.time(
-  result <- ALS(data, train, test, f = 10, maxIters = 10, lambda = 5)
-  )
-
+result <- ALS(data, train, test, f = 10, maxIters = 15, lambda = 1)
 stopCluster(cl)
 ```
 
 # CV
 ```{r}
-fs <- c(5, 10, 20, 30, 50)
+source("../lib/cross_validation.R")
+fs <- c(5, 10, 15, 20)
 lambdas <- c(.01, .1, .5, 1, 5)
 ```
 
 ```{r, warning=FALSE, message=FALSE}
-cl <- makeCluster(4)
+cl <- makeCluster(8)
 
-trainRMSE <- matrix(NA, nrow=length(fs), ncol=length(lambdas))
-testRMSE <- matrix(NA, nrow=length(fs), ncol=length(lambdas))
+maxIter <- 15
+colNM <- c(1:maxIter)[c(1:maxIter)%%3 ==1]
 
-colnames(trainRMSE) <- lambdas
-colnames(testRMSE) <- lambdas
+# maxIter vs. f
+trainRMSE_f <- matrix(NA, nrow=length(fs), ncol=(maxIter%/%3))
+testRMSE_f <- matrix(NA, nrow=length(fs), ncol=(maxIter%/%3))
 
-row.names(trainRMSE) <- fs
-row.names(testRMSE) <- fs
+colnames(trainRMSE_f) <- colNM
+colnames(testRMSE_f) <-  colNM
 
+row.names(trainRMSE_f) <- fs
+row.names(testRMSE_f) <- fs
+
+
+
+# maxIter vs. lambda
+trainRMSE_lamd <- matrix(NA, nrow=length(lambdas), ncol=(maxIter%/%3))
+testRMSE_lamd <- matrix(NA, nrow=length(lambdas), ncol=(maxIter%/%3))
+
+colnames(trainRMSE_lamd) <- colNM
+colnames(testRMSE_lamd) <-  colNM
+
+row.names(trainRMSE_lamd) <- lambdas
+row.names(testRMSE_lamd) <- lambdas
+
+# maxIter vs. f
 for(f in 1:length(fs)){
-  for(l in 1:length(lambdas)){
-    t = Sys.time()
-    system.time(
-      result <- ALS(data, train, test, f = fs[f], maxIters = 10, lambda = lambdas[l])
-    )
-    print(paste0("f: ", fs[f], "    lambda: ", lambdas[l], "    Time: ", Sys.time()-t))
+  t = Sys.time()
     
-    trainRMSE[f, l] <- (result$TrainRMSE)[10]
-    testRMSE[f, l] <- (result$TestRMSE)[10]
-  }
+  result <- cv.functionYQ(train, K=5, f = fs[f], lambda = 1, maxIter=maxIter)
+    
+    
+  print(paste0("", "f: ", fs[f], "    lambda: ", 1, "    Time: ", Sys.time()-t))
+    
+  trainRMSE_f[f, ] <- (result$mean_train_rmse)
+  testRMSE_f[f, ] <- (result$mean_test_rmse)
 }
+
+# maxIter vs. lambda
+for(l in 1:length(lambdas)){
+  t = Sys.time()
+    
+  result <- cv.functionYQ(train, K=5, f = 10, lambda = lambdas[l], maxIter=maxIter)
+    
+    
+  print(paste0("", "f: ", 10, "    lambda: ", lambdas[l], "    Time: ", Sys.time()-t))
+    
+  trainRMSE_lamd[l, ] <- (result$mean_train_rmse)
+  testRMSE_lamd[l, ] <- (result$mean_test_rmse)
+}
+
 stopCluster(cl)
 
-save(trainRMSE, testRMSE, file="../output/baseAlsCV.RData")
+save(trainRMSE_f, testRMSE_f, trainRMSE_lamd, testRMSE_lamd, file="../output/baseAlsCV.RData")
+```
 
+```{r}
+load(file="../output/baseAlsCV.RData")
+```
+
+```{r}
+plot_cv <- function(df){
+  parameter=df %>% 
+    rownames()
+  iter <- df %>% 
+    colnames()
+  tmp <- df %>%
+    as_tibble() %>%
+    mutate(parameter=parameter) %>%
+    pivot_longer(-parameter,
+                 names_to = "iter",
+                 values_to = "RMSE") %>%
+    mutate(iter=as.numeric(iter))
+  plot <- ggplot() +
+    geom_line(data=tmp,
+              mapping=aes(x=iter,
+                          y=RMSE,
+                          color=parameter)) + 
+    theme_light()
+  
+  return(plot)
+}
+```
+
+
+
+
+```{r}
+trainf <- plot_cv(trainRMSE_f)
+trainf +
+  labs(title="CV train_RMSE for f")
+```
+
+```{r}
+testf=plot_cv(testRMSE_f)
+testf +
+  labs(title="CV test_RMSE for f")
+```
+
+```{r}
+trainlamd <- plot_cv(trainRMSE_lamd)
+trainlamd + 
+  labs(title="CV train_RMSE for lambda")
+```
+
+
+```{r}
+testlamd <- plot_cv(testRMSE_lamd)
+testlamd +
+  labs(title="CV test_RMSE for lambda")
+```
+
+```{r}
+resultALS <- ALS(data, train, test, f = 5, maxIters =10 , lambda =5)
+save(resultALS, file = "../output/resultALS.RData")
+
+```
+
+
+
+
+# P3
+
+```{r}
+
+load(file = "../output/resultALS.RData")
+source("../lib/P3.R")
+
+data=data
+train=train
+test=test
+
+result=resultALS
+```
+
+
+
+
+
+```{r}
+# lambda=c(1, 5, 10, 15, 20)
+# 
+# krr.cv.rmse <- matrix(0, nrow = length(lambda), ncol = 4)
+#   for(i in 1:length(lambda)){
+#     cat("lambda=", lambda[i], "\n")
+#     krr.cv.rmse[i,] <- krr.cv (dat_train=data, K.fold=3, lambda=lambda[i])
+#     
+#   }
+# save(krr.cv.rmse, file="../output/krr.cv.rmse.RData")
+```
+
+
+
+
+```{r}
+test=KRR.Post(lambda = 1, data = data, train = train, test = test)
+```
+
+
+
+
+```{r}
+test=krr.cv (dat_train=data, K.fold=2, lambda=1)
 ```
 
