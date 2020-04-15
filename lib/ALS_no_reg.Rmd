@@ -293,12 +293,19 @@ result=resultALS
 ```{r}
 lambda=c(1, 5, 10, 15, 20)
 sigma=c(1,2,3,4,5)
+# krr.cv.rmse <- matrix(0, nrow = length(lambda), ncol = 4)
+#   for(i in 1:length(lambda)){
+#     for (j in 1:length(sigma)){
+#     cat("lambda=", lambda[i],"sigma=", sigma[j], "\n")
+#     krr.cv.rmse[i,] <- krr.cv (dat_train=data, K.fold=3, lambda=lambda[i],sigma=sigma[j])
+#     }
+#   }
 krr.cv.rmse <- matrix(0, nrow = length(lambda), ncol = 4)
   for(i in 1:length(lambda)){
-    for (j in 1:length(sigma)){
-    cat("lambda=", lambda[i],"sigma=", sigma[j], "\n")
-    krr.cv.rmse[i,] <- krr.cv (dat_train=data, K.fold=3, lambda=lambda[i],sigma=sigma[j])
-    }
+
+    cat("lambda=", lambda[i], "\n")
+    krr.cv.rmse[i,] <- krr.cv (dat_train=data, K.fold=3, lambda=lambda[i],sigma=1)
+
   }
 save(krr.cv.rmse, file="../output/krr.cv.rmse.RData")
 ```
