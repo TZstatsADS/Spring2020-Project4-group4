@@ -345,9 +345,9 @@ test=krr.cv (dat_train=data, K.fold=2, lambda=1,sigma=1.5)
 ## continue..
 ```{r}
 #the r matrix and q matrix for factor of 10, lambda of 5 and RMSE
-als1= ALS(f = 10, lambda = 5, max.iter=10, data, train=data_train, test=data_test)
-mat1= als1$q
-mat2=t(as.matrix(als$p))%*%as.matrix(als$q)
+als1 <- ALS(data, train, test, f = 10, maxIters = 15, lambda = 1)
+mat1= als1$Movies
+mat2=t(as.matrix(als$Users))%*%as.matrix(als$Movie)
 write.csv(mat1, file = "../output/A3_q_dim10.csv")
 write.csv(mat2, file = "../output/A3_r_dim10.csv")
 ```
