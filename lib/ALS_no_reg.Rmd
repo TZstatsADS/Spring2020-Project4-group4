@@ -141,19 +141,11 @@ ALS <- function(data, train, test, f, maxIters, lambda=5){
 
 # Test
 ```{r, warning=FALSE, message=FALSE}
-<<<<<<< HEAD
-# set the number of cores to use
-cl <- makeCluster(4)
-result <- ALS(data, train, test, f = 10, maxIters = 15, lambda = 1)
-write.csv(result, "../output/result0.csv")
-
-stopCluster(cl)
-=======
 # # set the number of cores to use
 # cl <- makeCluster(8)
 # result <- ALS(data, train, test, f = 10, maxIters = 15, lambda = 1)
 # stopCluster(cl)
->>>>>>> 06c0f7f3cc986f83e528c964173c47787c0e32bc
+
 ```
 
 # CV
@@ -166,17 +158,11 @@ lambdas_als <- c(1, 5, 8, 10)
 lambdas_P <- c(1, 5, 10, 15, 20)
 sigmas <- c(1,2,3,4,5)
 
-<<<<<<< HEAD
 cv.df <- expand.grid("f"=fs, 
                      "lambda_als"=lambdas_als, 
                      "lambda_p"=lambdas_P, 
                      "sigma" =sigmas)
-=======
-cv.df <- expand.grid("fs"=fs, 
-                     "lambdas_als"=lambdas_als, 
-                     "lambdas_p"=lambdas_P, 
-                     "sigmas" =sigmas)
->>>>>>> 06c0f7f3cc986f83e528c964173c47787c0e32bc
+
 ```
 
 ```{r}
