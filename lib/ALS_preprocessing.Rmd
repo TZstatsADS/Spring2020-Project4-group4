@@ -1,0 +1,390 @@
+---
+title: "A3_preprocessing"
+author: "Yuqiao Liu & Guoying Li"
+date: "4/15/2020"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r packages}
+#installed.packages("remotes")
+remotes::install_github("TimothyKBook/krr")
+#installed.packages("krr")
+library(krr)
+library(dplyr)
+library(caret)
+```
+
+# A3 with 10 factors
+
+```{r}
+#read output and data
+train_set<-read.csv("../data/train_set.csv")
+test_set<-read.csv("../data/test_set.csv")
+q<-read.csv("../output/A3_q_dim10.csv",header= FALSE)
+rating.a3<-read.csv("../output/A3_r_dim10.csv",header=FALSE)
+```
+
+## Prepare for kernel ridge regression input
+
+We need to transform the results from ALS to the form that we can put into kernel ridge regression. First, we should split rating data for 610 users since we should do krr for different users. Second, each column of q matrix we have from ALS represents a movie. We should to etract certain column of q matrix corresponding to the movie(movieid) users rating and then combine them to build 610 different transformed new q matrices. And then, nomarlize each column of new q matrix to get X (one of the input). 
+
+
+```{r}
+#data transformation and get input of krr
+train_split<-split(train_set,train_set$userId)
+train_split1<-split(train_set,train_set$movieId)
+length(train_split1)
+movie<-as.vector(unlist(c(q[1,])))
+q<-as.matrix(q[-1,])
+new_q_split<-list()
+for (k in 1:length(train_split)){
+  new<-c()
+for (i in 1:dim(train_split[[k]])[1]){
+ new<-cbind(new,q[,which(movie==train_split[[k]]$movieId[i])])}
+ new_q_split[[k]]<-new}
+normal<-function(a){return(a/sqrt(sum(a^2)))}
+q_trans<-apply(q,2,normal)
+q_trans[which(is.na(q_trans))]<-0
+x_split<-list()
+for (k in 1:length(train_split)){
+  x_split[[k]]<-apply(new_q_split[[k]],2,normal)}
+data_split<-list()
+for (k in 1:length(train_split)){
+  data_split[[k]]<-cbind(train_split[[k]]$rating,t(x_split[[k]]))}
+#save(data_split,file = "../output/data_split1.RData")
+```
+
+## Tuning parameter for kernel ridge regression
+
+We set the kernel as Gaussian as the paper said and use cross validation to get a smaller RMSE.
+
+```{r CV FUNCTION}
+#write a function to do cross validation for parameter lambda in krr
+cv.krr <- function(data, kfold, lam){
+  set.seed(123)
+  data.x <- as.matrix(data[,-1])
+  data.y <- data[,1]
+  n <- nrow(data.x)
+  cv.id <- createFolds(1:n, k = kfold)
+  cv.tuning <- c()
+  for (j in cv.id){
+    #Split Data in train and validation sets
+    x.train.cv <- data.x[-j,]
+    y.train.cv <- data.y[-j]
+    x.validation.cv <- data.x[j,]
+    y.validation.cv <- data.y[j]
+    #Run Model
+    mod.cv <- krr(x = x.train.cv,  y.train.cv, lambda = lam)
+    #Estimate predictin of validation test
+    pred.cv <- predict(mod.cv, x.validation.cv)
+    #Calculate RMSE
+    rmse.cv <- sqrt(mean((y.validation.cv - pred.cv)^2))
+    cv.tuning <- cbind(cv.tuning, rmse.cv)
+    cv.mean <- mean(cv.tuning)
+    }
+  return(cv.mean)
+}
+```
+
+```{r TUNE LAMBDA}
+#find a best lambda
+lambdas <- c(0.7,0.8,0.9)
+rmse_tune <- data.frame(lambdas=lambdas,rmse=rep(0,length(lambdas)))
+for (i in 1:length(lambdas)){
+  m <- lapply(data_split, cv.krr, 5, lambdas[i])
+  rmse_tune[i,2] <-  sum(unlist(m))
+}
+rmse_tune
+```
+
+## Train kernel ridge regression and get prediction
+
+0.7 is the best lambda for this model and then we use 0.7 to train 610 kernel ridge regression models. And then get a prediction matrix with dimension of 610*9724 for krr.
+
+```{r}
+#use tuned lambda to train 610 users model
+train_model<-vector(mode="list",length=length(data_split))
+for(i in 1:length(data_split)){
+  train_model[[i]]<-krr(data_split[[i]][,-1],data_split[[i]][,1],0.7)}
+#get prediction in a matrix with dimension 610*9724
+pred_rating<-matrix(0,nrow=length(data_split),ncol=dim(q)[2])
+for (i in 1:length(data_split)){
+  pred_rating[i,]<-predict(train_model[[i]],t(q_trans))}
+#save(pred_rating,file = "../output/pred_rating2.RData")
+```
+
+```{r}
+rating.a3<-rating.a3[-1,]
+colnames(rating.a3)<-c(as.character(movie))
+rownames(rating.a3)<-c(1:610)
+colnames(pred_rating)<-c(as.character(movie))
+rownames(pred_rating)<-c(1:610)
+```
+
+```{r}
+#function to cacluate mse
+  mea<-function(data,test){
+  movies<-data$movieId
+  users<-data$userId
+  pred<-as.numeric(t(test[match(c(as.character(users)),rownames(test)),match(c(as.character(movies)),colnames(test))]))
+  return(mean((data$rating-pred)^2))
+}
+```
+
+## Compute weighted average of algrithms predicition and krr prediction
+
+We combined the predictions together and see if using weighted average will help further minimize RMSE. And we used cross validation to get the best weight.  
+
+For factor numbers of 10, we find the best weight is 0.7, which means krr has better prediction than ALS for nearly 70% ratings.
+But for 50 and 100 factors, the best weight is 1 which means krr is totally better than AlS. Maybe that's the point we should fo post processing after the algorithms.
+
+```{r}
+#get the best weight
+weights <- seq(0,1,0.1)
+rmse_train <- data.frame(weights=weights,rmse=rep(0,length(weights)))
+rating.weighted<-list()
+dim(train_set)[1]
+for (i in 1:length(weights)){
+  rating.weighted[[i]]<- rating.a3*(1-weights[i]) + pred_rating*weights[i]
+  rating.weighted[[i]]<-as.matrix(rating.weighted[[i]])
+#because the computation power is not that strong, I have to split data here
+  mean1<-mea(train_set[1:10000,],rating.weighted[[i]])
+  mean2<-mea(train_set[10001:20000,],rating.weighted[[i]])
+  mean3<-mea(train_set[20001:30000,],rating.weighted[[i]])
+  mean4<-mea(train_set[30001:40000,],rating.weighted[[i]])
+  mean5<-mea(train_set[40001:50000,],rating.weighted[[i]])
+  mean6<-mea(train_set[50001:60000,],rating.weighted[[i]])
+  mean7<-mea(train_set[60001:70000,],rating.weighted[[i]])
+  mean8<-mea(train_set[70001:80000,],rating.weighted[[i]])
+  mean9<-mea(train_set[80001:dim(train_set)[1],],rating.weighted[[i]])
+  rmse_train[i,2]<-sqrt(((mean1+mean2+mean3+mean4+mean5+mean6+mean7+mean8)*10000+(dim(train_set)[1]-80000)*mean9)/dim(train_set)[1])
+}
+rmse_train
+```
+
+## Evaluation
+
+We used the tuned weight to evaluate on test data and get the final RMSE for the whole A3 algorithm with krr as post processing method.
+
+```{r}
+#get test rmse
+best_weight <- match(min(rmse_train$rmse), rmse_train$rmse)
+dim(test_set)[1]
+mean11<-mea(test_set[1:10000,],rating.weighted[[best_weight]])
+  mean21<-mea(test_set[10001:20000,],rating.weighted[[best_weight]])
+  mean32<-mea(test_set[20001:dim(test_set)[1],],rating.weighted[[best_weight]])
+  rmse_test<-sqrt(((mean11+mean21)*10000+(dim(test_set)[1]-20000)*mean32)/dim(test_set)[1])
+  rmse_test
+```
+
+## A3 with 50 factors
+
+The steps are all the same for 50 factors and 100 factors in the following part.
+
+```{r}
+#read output and data
+train_set<-read.csv("../data/train_set.csv")
+test_set<-read.csv("../data/test_set.csv")
+q<-read.csv("../output/A3_q_dim50.csv",header= FALSE)
+rating.a3<-read.csv("../output/A3_r_dim50.csv",header=FALSE)
+```
+
+```{r}
+#data transformation and get input of krr
+train_split<-split(train_set,train_set$userId)
+train_split1<-split(train_set,train_set$movieId)
+length(train_split1)
+movie<-as.vector(unlist(c(q[1,])))
+q<-as.matrix(q[-1,])
+new_q_split<-list()
+for (k in 1:length(train_split)){
+  new<-c()
+for (i in 1:dim(train_split[[k]])[1]){
+ new<-cbind(new,q[,which(movie==train_split[[k]]$movieId[i])])}
+ new_q_split[[k]]<-new}
+normal<-function(a){return(a/sqrt(sum(a^2)))}
+q_trans<-apply(q,2,normal)
+q_trans[which(is.na(q_trans))]<-0
+x_split<-list()
+for (k in 1:length(train_split)){
+  x_split[[k]]<-apply(new_q_split[[k]],2,normal)}
+data_split<-list()
+for (k in 1:length(train_split)){
+  data_split[[k]]<-cbind(train_split[[k]]$rating,t(x_split[[k]]))}
+#save(data_split,file = "../output/data_split1.RData")
+```
+
+
+```{r TUNE LAMBDA}
+#find a best lambda
+lambdas <- c(0.55,0.6,0.65)
+rmse_tune <- data.frame(lambdas=lambdas,rmse=rep(0,length(lambdas)))
+for (i in 1:length(lambdas)){
+  m <- lapply(data_split, cv.krr, 5, lambdas[i])
+  rmse_tune[i,2] <-  sum(unlist(m))
+}
+rmse_tune
+```
+
+
+```{r}
+#use tuned lambda to train 610 users model
+train_model<-vector(mode="list",length=length(data_split))
+for(i in 1:length(data_split)){
+  train_model[[i]]<-krr(data_split[[i]][,-1],data_split[[i]][,1],0.55)}
+#get prediction in a matrix with dimension 610*9724
+pred_rating<-matrix(0,nrow=length(data_split),ncol=dim(q)[2])
+for (i in 1:length(data_split)){
+  pred_rating[i,]<-predict(train_model[[i]],t(q_trans))}
+#save(pred_rating,file = "../output/pred_rating3.RData")
+```
+
+```{r}
+rating.a3<-rating.a3[-1,]
+colnames(rating.a3)<-c(as.character(movie))
+rownames(rating.a3)<-c(1:610)
+colnames(pred_rating)<-c(as.character(movie))
+rownames(pred_rating)<-c(1:610)
+```
+
+
+```{r}
+#get the best weight
+weights <- seq(0,1,0.1)
+rmse_train <- data.frame(weights=weights,rmse=rep(0,length(weights)))
+rating.weighted<-list()
+dim(train_set)[1]
+for (i in 1:length(weights)){
+  rating.weighted[[i]]<- rating.a3*(1-weights[i]) + pred_rating*weights[i]
+  rating.weighted[[i]]<-as.matrix(rating.weighted[[i]])
+  mean1<-mea(train_set[1:10000,],rating.weighted[[i]])
+  mean2<-mea(train_set[10001:20000,],rating.weighted[[i]])
+  mean3<-mea(train_set[20001:30000,],rating.weighted[[i]])
+  mean4<-mea(train_set[30001:40000,],rating.weighted[[i]])
+  mean5<-mea(train_set[40001:50000,],rating.weighted[[i]])
+  mean6<-mea(train_set[50001:60000,],rating.weighted[[i]])
+  mean7<-mea(train_set[60001:70000,],rating.weighted[[i]])
+  mean8<-mea(train_set[70001:80000,],rating.weighted[[i]])
+  mean9<-mea(train_set[80001:dim(train_set)[1],],rating.weighted[[i]])
+  rmse_train[i,2]<-sqrt(((mean1+mean2+mean3+mean4+mean5+mean6+mean7+mean8)*10000+(dim(train_set)[1]-80000)*mean9)/dim(train_set)[1])
+}
+rmse_train
+```
+
+```{r}
+#get test rmse
+best_weight <- match(min(rmse_train$rmse), rmse_train$rmse)
+dim(test_set)[1]
+mean11<-mea(test_set[1:10000,],rating.weighted[[best_weight]])
+  mean21<-mea(test_set[10001:20000,],rating.weighted[[best_weight]])
+  mean32<-mea(test_set[20001:dim(test_set)[1],],rating.weighted[[best_weight]])
+  rmse_test<-sqrt(((mean11+mean21)*10000+(dim(test_set)[1]-20000)*mean32)/dim(test_set)[1])
+  rmse_test
+```
+
+## A3 with 100 factors
+
+```{r}
+#read output and data
+train_set<-read.csv("../data/train_set.csv")
+test_set<-read.csv("../data/test_set.csv")
+q<-read.csv("../output/A3_q_dim100.csv",header= FALSE)
+rating.a3<-read.csv("../output/A3_r_dim100.csv",header=FALSE)
+```
+
+```{r}
+#data transformation and get input of krr
+train_split<-split(train_set,train_set$userId)
+train_split1<-split(train_set,train_set$movieId)
+length(train_split1)
+movie<-as.vector(unlist(c(q[1,])))
+q<-as.matrix(q[-1,])
+new_q_split<-list()
+for (k in 1:length(train_split)){
+  new<-c()
+for (i in 1:dim(train_split[[k]])[1]){
+ new<-cbind(new,q[,which(movie==train_split[[k]]$movieId[i])])}
+ new_q_split[[k]]<-new}
+normal<-function(a){return(a/sqrt(sum(a^2)))}
+q_trans<-apply(q,2,normal)
+q_trans[which(is.na(q_trans))]<-0
+x_split<-list()
+for (k in 1:length(train_split)){
+  x_split[[k]]<-apply(new_q_split[[k]],2,normal)}
+data_split<-list()
+for (k in 1:length(train_split)){
+  data_split[[k]]<-cbind(train_split[[k]]$rating,t(x_split[[k]]))}
+#save(data_split,file = "../output/data_split1.RData")
+```
+
+
+```{r TUNE LAMBDA}
+#find a best lambda
+lambdas <- c(0.5,0.6,0.7)
+rmse_tune <- data.frame(lambdas=lambdas,rmse=rep(0,length(lambdas)))
+for (i in 1:length(lambdas)){
+  m <- lapply(data_split, cv.krr, 5, lambdas[i])
+  rmse_tune[i,2] <-  sum(unlist(m))
+}
+rmse_tune
+```
+
+
+```{r}
+#use tuned lambda to train 610 users model
+train_model<-vector(mode="list",length=length(data_split))
+for(i in 1:length(data_split)){
+  train_model[[i]]<-krr(data_split[[i]][,-1],data_split[[i]][,1],0.5)}
+#get prediction in a matrix with dimension 610*9724
+pred_rating<-matrix(0,nrow=length(data_split),ncol=dim(q)[2])
+for (i in 1:length(data_split)){
+  pred_rating[i,]<-predict(train_model[[i]],t(q_trans))}
+#save(pred_rating,file = "../output/pred_rating4.RData")
+```
+
+```{r}
+rating.a3<-rating.a3[-1,]
+colnames(rating.a3)<-c(as.character(movie))
+rownames(rating.a3)<-c(1:610)
+colnames(pred_rating)<-c(as.character(movie))
+rownames(pred_rating)<-c(1:610)
+```
+
+
+```{r}
+#get the best weight
+weights <- seq(0,1,0.1)
+rmse_train <- data.frame(weights=weights,rmse=rep(0,length(weights)))
+rating.weighted<-list()
+dim(train_set)[1]
+for (i in 1:length(weights)){
+  rating.weighted[[i]]<- rating.a3*(1-weights[i]) + pred_rating*weights[i]
+  rating.weighted[[i]]<-as.matrix(rating.weighted[[i]])
+  mean1<-mea(train_set[1:10000,],rating.weighted[[i]])
+  mean2<-mea(train_set[10001:20000,],rating.weighted[[i]])
+  mean3<-mea(train_set[20001:30000,],rating.weighted[[i]])
+  mean4<-mea(train_set[30001:40000,],rating.weighted[[i]])
+  mean5<-mea(train_set[40001:50000,],rating.weighted[[i]])
+  mean6<-mea(train_set[50001:60000,],rating.weighted[[i]])
+  mean7<-mea(train_set[60001:70000,],rating.weighted[[i]])
+  mean8<-mea(train_set[70001:80000,],rating.weighted[[i]])
+  mean9<-mea(train_set[80001:dim(train_set)[1],],rating.weighted[[i]])
+  rmse_train[i,2]<-sqrt(((mean1+mean2+mean3+mean4+mean5+mean6+mean7+mean8)*10000+(dim(train_set)[1]-80000)*mean9)/dim(train_set)[1])
+}
+rmse_train
+```
+
+```{r}
+#get test rmse
+best_weight <- match(min(rmse_train$rmse), rmse_train$rmse)
+dim(test_set)[1]
+mean11<-mea(test_set[1:10000,],rating.weighted[[best_weight]])
+  mean21<-mea(test_set[10001:20000,],rating.weighted[[best_weight]])
+  mean32<-mea(test_set[20001:dim(test_set)[1],],rating.weighted[[best_weight]])
+  rmse_test<-sqrt(((mean11+mean21)*10000+(dim(test_set)[1]-20000)*mean32)/dim(test_set)[1])
+  rmse_test
+```

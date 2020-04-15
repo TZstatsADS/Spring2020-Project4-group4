@@ -1,6 +1,6 @@
 ---
 title: "ALS Model"
-author: "Yuqiao Liu"
+author: "Yuqiao Liu & Guoying Li"
 output: html_notebook
 ---
 
@@ -21,6 +21,11 @@ train_ind <- createDataPartition(data$userId, p=.8, list=F)
 
 train <- data[train_ind, ]
 test <- data[-train_ind, ]
+train_path = '../data/train_set.csv'
+test_path = '../data/test_set.csv'
+#write.csv(train, train_path)
+#write.csv(test, test_path)
+
 ```
 
 # RMSE & Used Funcs
@@ -138,6 +143,8 @@ ALS <- function(data, train, test, f, maxIters, lambda=5){
 # set the number of cores to use
 cl <- makeCluster(4)
 result <- ALS(data, train, test, f = 10, maxIters = 15, lambda = 1)
+write.csv(result, "../output/result0.csv")
+
 stopCluster(cl)
 ```
 
@@ -152,8 +159,8 @@ lambdas_P <- c(1, 5, 10, 15, 20)
 sigmas <- c(1,2,3,4,5)
 
 cv.df <- expand.grid("f"=fs, 
-                     "lambda_als"=lambda_als, 
-                     "lambda_p"=lambda_P, 
+                     "lambda_als"=lambdas_als, 
+                     "lambda_p"=lambdas_P, 
                      "sigma" =sigmas)
 ```
 
@@ -292,8 +299,10 @@ testlamd +
 ```
 
 ```{r}
+library(tidyverse)
 resultALS <- ALS(data, train, test, f = 5, maxIters =10 , lambda =5)
 save(resultALS, file = "../output/resultALS.RData")
+
 
 ```
 
@@ -305,10 +314,6 @@ save(resultALS, file = "../output/resultALS.RData")
 ```{r}
 
 ```
-
-
-
-
 
 ```{r}
 
@@ -329,17 +334,22 @@ krr.cv.rmse <- matrix(0, nrow = length(lambda), ncol = 4)
 save(krr.cv.rmse, file="../output/krr.cv.rmse.RData")
 ```
 
-
-
-
 ```{r}
 test=KRR.Post(lambda = 1, data = data, train = train, test = test)
 ```
 
-
-
-
 ```{r}
 test=krr.cv (dat_train=data, K.fold=2, lambda=1,sigma=1.5)
 ```
+
+## continue..
+```{r}
+#the r matrix and q matrix for factor of 10, lambda of 5 and RMSE
+als1= ALS(f = 10, lambda = 5, max.iter=10, data, train=data_train, test=data_test)
+mat1= als1$q
+mat2=t(as.matrix(als$p))%*%as.matrix(als$q)
+write.csv(mat1, file = "../output/A3_q_dim10.csv")
+write.csv(mat2, file = "../output/A3_r_dim10.csv")
+```
+
 
