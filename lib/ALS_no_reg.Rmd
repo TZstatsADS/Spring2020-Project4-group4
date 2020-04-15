@@ -106,26 +106,27 @@ ALS <- function(data, train, test, f, maxIters, lambda=5){
     clusterExport(cl, "Users", envir = environment())
     Users <- parSapply(cl, as.character(UserId), findSolve, solveBy="Movies", train = train, lambda = lambda, USE.NAMES = T)
     # Fix User, solve Movie
+    
     clusterExport(cl, "Movies", envir = environment())
     clusterExport(cl, "Users", envir = environment())
     Movies <- parSapply(cl, as.character(MovieId), findSolve, solveBy="Users", train = train, lambda = lambda, USE.NAMES = T)
     # cat("Iter:", iter,  "\t Time spent:", round(Sys.time()-st, 3), "s\n")
     
-    if(iter%%3==1){
-      est_rating <- t(Users) %*% Movies
-      
-      trainRMSE[iter%/%3+1] <- RMSE(train, est_rating)
-      testRMSE[iter%/%3+1] <- RMSE(test, est_rating)
-    }
+    # if(iter%%3==1){
+    #   est_rating <- t(Users) %*% Movies
+    #   
+    #   trainRMSE[iter%/%3+1] <- RMSE(train, est_rating)
+    #   testRMSE[iter%/%3+1] <- RMSE(test, est_rating)
+    # }
     
     cat(".")
     if(iter==maxIters) cat("\n")
     iter <- iter + 1
   }
-  # RMSE 
-  # est_rating <- t(Users) %*% Movies
-  # trainRMSE <- RMSE(train, est_rating)
-  # testRMSE <- RMSE(test, est_rating)
+  # RMSE
+  est_rating <- t(Users) %*% Movies
+  trainRMSE <- RMSE(train, est_rating)
+  testRMSE <- RMSE(test, est_rating)
   
   
   
@@ -140,12 +141,19 @@ ALS <- function(data, train, test, f, maxIters, lambda=5){
 
 # Test
 ```{r, warning=FALSE, message=FALSE}
+<<<<<<< HEAD
 # set the number of cores to use
 cl <- makeCluster(4)
 result <- ALS(data, train, test, f = 10, maxIters = 15, lambda = 1)
 write.csv(result, "../output/result0.csv")
 
 stopCluster(cl)
+=======
+# # set the number of cores to use
+# cl <- makeCluster(8)
+# result <- ALS(data, train, test, f = 10, maxIters = 15, lambda = 1)
+# stopCluster(cl)
+>>>>>>> 06c0f7f3cc986f83e528c964173c47787c0e32bc
 ```
 
 # CV
@@ -158,24 +166,49 @@ lambdas_als <- c(1, 5, 8, 10)
 lambdas_P <- c(1, 5, 10, 15, 20)
 sigmas <- c(1,2,3,4,5)
 
+<<<<<<< HEAD
 cv.df <- expand.grid("f"=fs, 
                      "lambda_als"=lambdas_als, 
                      "lambda_p"=lambdas_P, 
                      "sigma" =sigmas)
+=======
+cv.df <- expand.grid("fs"=fs, 
+                     "lambdas_als"=lambdas_als, 
+                     "lambdas_p"=lambdas_P, 
+                     "sigmas" =sigmas)
+>>>>>>> 06c0f7f3cc986f83e528c964173c47787c0e32bc
 ```
 
 ```{r}
 ALS_KRR <- function(data, train, test, f, maxIters, lambda_als, lambda_p, sigma){
-  result <- ALS(data, train, test, f, maxIters, lambda=5)
-  
-  KRR.Post(lambda=lambda_p, sigma=sigma, data, train, test)
-  
+  # data=dat_train
+  # train=train.data
+  # test=test.data
+  # f=f
+  # maxIters=maxIter
+  # lambda=lambdas_als
+  # lambda_p=lambdas_p
+  # sigma=sigmas
+  result_ALS <- ALS(data, train, test, f, maxIters, lambda_als)
+  KRR.Post(result_ALS=result_ALS,lambda=lambda_p, sigma=sigma, data, train, test)
 }
+
 ```
 
 ```{r}
-cv.result <- cv.df %>% 
-  mutate(cvResults)
+cl <- makeCluster(8)
+x=cv.df%>%as_tibble()%>%mutate(train_mean=NA,test_mean=NA,train_sd=NA,test_sd=NA)#%>%head(2)
+for (i in 1:100){
+  tmp=cv.functionYQ(dat_train = data,K=5,f=x[i,]$fs,maxIter =15,lambdas_als = x[i,]$lambdas_als,lambdas_p = x[i,]$lambdas_p,sigmas =  x[i,]$sigmas)
+  x[i,"train_mean"]=tmp$mean_train_rmse
+  x[i,"test_mean"]=tmp$mean_test_rmse
+  x[i,"train_sd"]=tmp$sd_train_rmse
+  x[i,"test_sd"]=tmp$sd_test_rmse
+  rm(tmp)
+}
+save(x, file="../output/cvtmp.RData")
+# load(x, file="../output/cvtmp.RData")
+stopCluster(cl)
 ```
 
 

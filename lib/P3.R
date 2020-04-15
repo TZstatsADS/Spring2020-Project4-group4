@@ -31,7 +31,7 @@ rating_krr<-function(u){
   return(est_rating)
 }
 
-KRR.Post <- function (lambda = 10,sigma=1.5, data, train, test) {
+KRR.Post <- function (result_ALS,lambda = 10,sigma=1.5, data, train, test) {
   U=data$userId%>%unique()%>%length
   I=data$movieId%>%unique()%>%length
   
@@ -42,7 +42,7 @@ KRR.Post <- function (lambda = 10,sigma=1.5, data, train, test) {
   colnames(est_rating) <- levels(as.factor(data$movieId))
   rownames(est_rating) <- levels(as.factor(data$userId))
   
-  X_full <- result$Movie
+  X_full <- result_ALS$Movie
   norm.X_full <- t(norm.row(X_full))
   norm.X_full[is.na(norm.X_full)] <- 0
   
@@ -58,7 +58,7 @@ KRR.Post <- function (lambda = 10,sigma=1.5, data, train, test) {
   clusterExport(cl, "sigma", envir = environment())
   est_rating=parSapply(cl, as.character(1:U),rating_krr, USE.NAMES = T)
   est_rating=t(est_rating)
-  colnames(est_rating)<-resultALS$Rating%>%colnames
+  colnames(est_rating)<-result_ALS$Rating%>%colnames
   # Summerize
   train_RMSE <- RMSE(train, est_rating)
   cat("training RMSE:", train_RMSE, "\t")
