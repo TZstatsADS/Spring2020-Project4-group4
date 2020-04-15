@@ -2,11 +2,9 @@
 ### Cross Validation ###
 ########################
 
-### Author: Chengliang Tang
-### Project 3
 
-cv.functionYQ <- function(dat_train, K, f, lambda, maxIter){
-  ### Input:
+cv.functionYQ <- function(dat_train, K, f, maxIter,lambdas_als, lambdas_p,sigmas){
+  ### Input:   
   ### - train data frame
   ### - K: a number stands for K-fold CV
   ### - tuning parameters 
@@ -15,19 +13,24 @@ cv.functionYQ <- function(dat_train, K, f, lambda, maxIter){
   n.fold <- round(n/K, 0)
   set.seed(0)
   s <- sample(rep(1:K, c(rep(n.fold, K-1), n-(K-1)*n.fold)))  
-  train_rmse <- matrix(NA, ncol = (maxIter%/%3), nrow = K)
-  test_rmse <- matrix(NA, ncol = (maxIter%/%3), nrow = K)
+  # train_rmse <- matrix(NA, ncol = (maxIter), nrow = K)
+  # test_rmse <- matrix(NA, ncol = (maxIter), nrow = K)
+  train_rmse <- NULL
+  test_rmse <- NULL
   
   for (i in 1:K){
     train.data <- dat_train[s != i,]
     test.data <- dat_train[s == i,]
     
-    result <- ALS(data, train, test, f = f, maxIters = maxIter, lambda = lambda)
-  
-    train_rmse[i,] <-  result$TrainRMSE
-    test_rmse[i,] <-   result$TestRMSE
+    # result <- ALS(data, train, test, f = f, maxIters = maxIter, lambda = lambda)
+    result <- ALS_KRR(dat_train,train.data,test.data,f=f,maxIters =maxIter,lambdas_als,lambdas_p, sigmas)
+    # 
+    # train_rmse[i,] <-  result$TrainRMSE
+    # test_rmse[i,] <-   result$TestRMSE
+    train_rmse <- c(train_rmse, result$train_RMSE)
+    test_rmse <-  c(test_rmse, result$test_RMSE)
     
   }		
-  return(list(mean_train_rmse = apply(train_rmse, 2, mean), mean_test_rmse = apply(test_rmse, 2, mean),
-         sd_train_rmse = apply(train_rmse, 2, sd), sd_test_rmse = apply(test_rmse, 2, sd)))
+  return(list(mean_train_rmse = mean(train_rmse), mean_test_rmse = mean(test_rmse),
+         sd_train_rmse = sd(train_rmse), sd_test_rmse = sd(test_rmse)))
 }
