@@ -134,18 +134,11 @@ ALS <- function(data, train, test, f, maxIters, lambda=5){
 
 ```
 
-# Test
-```{r, warning=FALSE, message=FALSE}
-# # set the number of cores to use
-# cl <- makeCluster(8)
-# result <- ALS(data, train, test, f = 10, maxIters = 15, lambda = 1)
-# stopCluster(cl)
-```
 
 # CV
 ```{r}
 source("../lib/cross_validation.R")
-source("../lib/P3.R")
+source("../lib/ALSwithP3.R")
 
 fs <- c(5, 10, 15)
 lambdas_als <- c(1, 5,10)
@@ -158,21 +151,6 @@ cv.df <- expand.grid("fs"=fs,
                      "sigmas" =sigmas)
 ```
 
-```{r}
-ALS_KRR <- function(data, train, test, f, maxIters, lambda_als, lambda_p, sigma){
-  # data=dat_train
-  # train=train.data
-  # test=test.data
-  # f=f
-  # maxIters=maxIter
-  # lambda=lambdas_als
-  # lambda_p=lambdas_p
-  # sigma=sigmas
-  result_ALS <- ALS(data, train, test, f, maxIters, lambda_als)
-  KRR.Post(result_ALS=result_ALS,lambda=lambda_p, sigma=sigma, data, train, test)
-}
-
-```
 
 ```{r}
 cl <- makeCluster(8)
