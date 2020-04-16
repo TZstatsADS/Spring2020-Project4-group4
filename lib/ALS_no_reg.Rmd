@@ -147,10 +147,10 @@ ALS <- function(data, train, test, f, maxIters, lambda=5){
 source("../lib/cross_validation.R")
 source("../lib/P3.R")
 
-fs <- c(5, 10, 15, 20)
-lambdas_als <- c(1, 5, 8, 10)
-lambdas_P <- c(1, 5, 10, 15, 20)
-sigmas <- c(1,2,3,4,5)
+fs <- c(5, 10, 15)
+lambdas_als <- c(1, 5,10)
+lambdas_P <- c(1, 5, 10)
+sigmas <- c(1,2,3)
 
 cv.df <- expand.grid("fs"=fs, 
                      "lambdas_als"=lambdas_als, 
@@ -176,20 +176,22 @@ ALS_KRR <- function(data, train, test, f, maxIters, lambda_als, lambda_p, sigma)
 
 ```{r}
 cl <- makeCluster(8)
-x=cv.df%>%as_tibble()%>%mutate(train_mean=NA,test_mean=NA,train_sd=NA,test_sd=NA)#%>%head(2)
-for (i in 1:100){
+load( file="../output/cvtmp.RData")
+
+# x=cv.df%>%as_tibble()%>%mutate(train_mean=NA,test_mean=NA,train_sd=NA,test_sd=NA)#%>%head(2)
+# x=cv.df%>%as_tibble()%>%mutate(train_mean=NA,test_mean=NA)
+for (i in 47:dim(x)[1]){
   tmp=cv.functionYQ(dat_train = data,K=5,f=x[i,]$fs,maxIter =15,lambdas_als = x[i,]$lambdas_als,lambdas_p = x[i,]$lambdas_p,sigmas =  x[i,]$sigmas)
   x[i,"train_mean"]=tmp$mean_train_rmse
   x[i,"test_mean"]=tmp$mean_test_rmse
-  x[i,"train_sd"]=tmp$sd_train_rmse
-  x[i,"test_sd"]=tmp$sd_test_rmse
+  # x[i,"train_sd"]=tmp$sd_train_rmse
+  # x[i,"test_sd"]=tmp$sd_test_rmse
   rm(tmp)
 }
 save(x, file="../output/cvtmp.RData")
 # load(x, file="../output/cvtmp.RData")
 stopCluster(cl)
 ```
-
 
 
 
