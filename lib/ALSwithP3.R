@@ -1,3 +1,11 @@
+#installed.packages("remotes")
+remotes::install_github("TimothyKBook/krr")
+#installed.packages("krr")
+library(krr)
+library(dplyr)
+library(caret)
+
+# Solve RMSE
 RMSE <- function(rating, est_rating){
   sqr_err <- function(obs){
     sqr_error <- (obs[3] - est_rating[as.character(obs[1]), as.character(obs[2])])^2
@@ -104,30 +112,6 @@ ALS <- function(data, train, test, f, maxIters, lambda=5){
 }
 
 
-
-ALS_KRR <- function(data, train, test, f, maxIters, lambda_als, lambda_p, sigma){
-  # data=dat_train
-  # train=train.data
-  # test=test.data
-  # f=f
-  # maxIters=maxIter
-  # lambda=lambdas_als
-  # lambda_p=lambdas_p
-  # sigma=sigmas
-  result_ALS <- ALS(data, train, test, f, maxIters, lambda_als)
-  KRR.Post(result_ALS=result_ALS,lambda=lambda_p, sigma=sigma, data, train, test)
-}
-
-
-
-
-#installed.packages("remotes")
-remotes::install_github("TimothyKBook/krr")
-#installed.packages("krr")
-library(krr)
-library(dplyr)
-library(caret)
-
 ## Function to Normalize Each Row
 norm.row <- function (m) {
   std <- function (vec){
@@ -153,7 +137,7 @@ rating_krr<-function(u){
   return(est_rating)
 }
 
-KRR.Post <- function (result_ALS,lambda = 10,sigma=1.5, data, train, test) {
+KRR.Post <- function (result_ALS, lambda = 10,sigma=1.5, data, train, test) {
   U=data$userId%>%unique()%>%length
   I=data$movieId%>%unique()%>%length
   
@@ -193,32 +177,16 @@ KRR.Post <- function (result_ALS,lambda = 10,sigma=1.5, data, train, test) {
   
 }
 
-
-
-
-krr.cv <- function(dat_train, K.fold, lambda,sigma){
-  ### Input:
-  ### - train data frame
-  ### - K.fold: a number stands for K-fold CV
-  ### - tuning parameters 
-  
-  n <- dim(dat_train)[1]
-  n.fold <- round(n/K.fold, 0)
-  set.seed(0)
-  s <- sample(rep(1:K.fold, c(rep(n.fold, K.fold-1), n-(K.fold-1)*n.fold)))  
-  cv.train.error <- rep(NA, K.fold)
-  cv.test.error <- rep(NA, K.fold)
-  
-  for (i in 1:K.fold){
-    train.data <- dat_train[s != i,]
-    test.data <- dat_train[s == i,]
-    
-    krr.result <- KRR.Post(lambda = lambda,sigma=sigma, data = dat_train, train = train.data, test = test.data)
-    
-    cv.train.error[i] <- krr.result$train_RMSE
-    cv.test.error[i] <- krr.result$test_RMSE
-    
-  }			
-  return(c(mean_train_rmse = mean(cv.train.error), mean_test_rmse = mean(cv.test.error),
-           sd_train_rmse = sd(cv.train.error), sd_test_rmse = sd(cv.test.error)))
+# Func of ALS with P3
+ALS_KRR <- function(data, train, test, f, maxIters, lambda_als, lambda_p, sigma){
+  # data=dat_train
+  # train=train.data
+  # test=test.data
+  # f=f
+  # maxIters=maxIter
+  # lambda=lambdas_als
+  # lambda_p=lambdas_p
+  # sigma=sigmas
+  result_ALS <- ALS(data, train, test, f, maxIters, lambda_als)
+  KRR.Post(result_ALS=result_ALS,lambda=lambda_p, sigma=sigma, data, train, test)
 }
