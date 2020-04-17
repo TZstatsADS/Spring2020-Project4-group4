@@ -1,15 +1,15 @@
 ---
-title: "ALS with P3"
-author: "Yuqiao Liu, Hanbo Jiao"
+title: "Project4-Group4"
+author: ""
 ---
 
 
 ```{r}
 library(parallel)
 library(tidyverse)
-#installed.packages("remotes")
+# installed.packages("remotes")
 remotes::install_github("TimothyKBook/krr")
-#installed.packages("krr")
+# installed.packages("krr")
 library(krr)
 library(dplyr)
 library(caret)
@@ -73,16 +73,22 @@ stopCluster(cl)
 ```
 
 # Choosing Paramters for als with krr
-```{r}
-load(x, file="../output/cvtmp.RData")
+```{r, message=FALSE}
+load(file="../output/cvtmp.RData")
+
+x[which.min(x$test_mean),]
 ```
 
 # Result of Funciton of ALS and KRR
-```{r, message=FALSE}
+```{r, message=FALSE, warning=FALSE}
 cl <- makeCluster(detectCores())
 
-# alsP3Result <- ALS_KRR(data, train, test, f=, maxIters=, lambda_als=, lambda_p=, sigma=)
+alsP3Result <- ALS_KRR(data, train, test, f=15, maxIters=10, lambda_als=10, lambda_p=1, sigma=1)
 
 stopCluster(cl)
+
+alsP3.train.rmse <- alsP3Result$train_RMSE
+alsP3.test.rmse <- alsP3Result$test_RMSE
+
 ```
 
