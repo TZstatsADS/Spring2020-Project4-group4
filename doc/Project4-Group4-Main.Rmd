@@ -1,29 +1,34 @@
 ---
-title: "ALS with P3"
-author: "Yuqiao Liu, Hanbo Jiao"
-output: html_notebook
+title: "Project4-Group4"
+author: ""
 ---
 
 
 ```{r}
 library(parallel)
 library(tidyverse)
+# installed.packages("remotes")
+remotes::install_github("TimothyKBook/krr")
+# installed.packages("krr")
+library(krr)
+library(dplyr)
+library(caret)
 source("../lib/ALSwithP3.R")
 ```
 
 # Data used for test
 ```{r}
-data <- read.csv("../data/ml-latest-small/ratings.csv")
-set.seed(1)
-
-# train-test split (.8/.2)
-train_ind <- createDataPartition(data$userId, p=.8, list=F)
-
-train <- data[train_ind, ]
-test <- data[-train_ind, ]
+# data <- read.csv("../data/ml-latest-small/ratings.csv")
+# set.seed(1)
+# 
+# # train-test split (.8/.2)
+# train_ind <- createDataPartition(data$userId, p=.8, list=F)
+# 
+# train <- data[train_ind, ]
+# test <- data[-train_ind, ]
 ```
 
-
+# Part 1: method of ALS with postprocessing of KRR
 # Load cross-validation Func
 ```{r}
 source("../lib/cross_validation.R")
@@ -68,16 +73,23 @@ stopCluster(cl)
 ```
 
 # Choosing Paramters for als with krr
-```{r}
-load(x, file="../output/cvtmp.RData")
+```{r, message=FALSE}
+load(file="../output/cvtmp.RData")
+
+x[which.min(x$test_mean),]
+# note: result of maxIters = 15
 ```
 
 # Result of Funciton of ALS and KRR
-```{r, message=FALSE}
+```{r, message=FALSE, warning=FALSE}
 cl <- makeCluster(detectCores())
 
-# alsP3Result <- ALS_KRR(data, train, test, f=, maxIters=, lambda_als=, lambda_p=, sigma=)
+alsP3Result <- ALS_KRR(data, train, test, f=15, maxIters=10, lambda_als=10, lambda_p=1, sigma=1)
 
 stopCluster(cl)
+
+alsP3.train.rmse <- alsP3Result$train_RMSE
+alsP3.test.rmse <- alsP3Result$test_RMSE
+
 ```
 
