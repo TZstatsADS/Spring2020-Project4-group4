@@ -96,7 +96,17 @@ findSolve_R <- function(id, solveBy, train, lambda, user_mat, movie_mat, au, bu,
 ```{r}
 ALS.R1R3 <- function(f = 10, lambda = 5, beta = 0.4, maxIters = 5, data = data,
             train = data_train, test = data_test){
-  
+  #
+  # f: Dimension of the feature space
+  # lambda: Regularization coefficient
+  # beta: Dev coefficient
+  # maxIters: Number of iterations
+  # data: All data
+  # train: Training data
+  # test: Test data
+  #
+
+  # Calculate the dev of data
   train = train %>% mutate(dev = ifelse(timediff>0, 1, -1)*abs(timediff)^beta)
   test = test %>% mutate(dev = ifelse(timediff>0, 1, -1)*abs(timediff)^beta)
   all_data = rbind(train, test)
@@ -107,7 +117,8 @@ ALS.R1R3 <- function(f = 10, lambda = 5, beta = 0.4, maxIters = 5, data = data,
   
   MovieId <- levels(as.factor(data$movieId))
   M <- length(MovieId)
-
+  
+  # Calculate the average value of each user or each movie
   avgRatingByUser <- data %>% 
     group_by(userId) %>% 
     summarise(avgRating = mean(rating))
@@ -116,12 +127,14 @@ ALS.R1R3 <- function(f = 10, lambda = 5, beta = 0.4, maxIters = 5, data = data,
     group_by(movieId) %>% 
     summarise(avgRating = mean(rating))
   
+  # Set initial values for users and movies
   Users <- matrix(c(avgRatingByUser$avgRating, runif((f-1)*U, -10, 10)), nrow=f,byrow = T)
   colnames(Users) <- UserId
   
   Movies <- matrix(c(avgRatingByMovie$avgRating, rnorm((f-1)*M, -10, 10)), nrow=f,byrow = T)
   colnames(Movies) <- MovieId
   
+  # Initialize bu, bi, R, au
   bu <- matrix(rep(0, U), ncol = U)
   colnames(bu) <- UserId
   
@@ -134,11 +147,10 @@ ALS.R1R3 <- function(f = 10, lambda = 5, beta = 0.4, maxIters = 5, data = data,
   au <- matrix(rep(0, U), ncol = U)
   colnames(au) <- UserId
   
-  # mean of all the ratings in train data set.
+  # Calculate mean of all the ratings in train data set.
   Ave_rating <- mean(train$rating)
   trainRMSE <- rep(NA, maxIters)
   testRMSE <- rep(NA, maxIters)
-  
   
   clusterExport(cl, "findSolve_R", envir = environment())
   clusterExport(cl, "f", envir = environment())
@@ -149,6 +161,7 @@ ALS.R1R3 <- function(f = 10, lambda = 5, beta = 0.4, maxIters = 5, data = data,
   while(iter <= maxIters){
     S = Sys.time()
     
+    # Expansion matrix for operation. However dev needs to be selected according to different users, so it shoule be added inside the function
     Movies_cal <- rbind(rep(1,M), Movies)
     colnames(Movies_cal) <- MovieId
     Users_cal <- rbind(au, bu, Users)
@@ -160,13 +173,13 @@ ALS.R1R3 <- function(f = 10, lambda = 5, beta = 0.4, maxIters = 5, data = data,
     au[1,] <- Users_cal[1, ]
     bu[1,] <- Users_cal[2, ]
     Users <- Users_cal[-c(1,2), ]
-
+    
+    # Expansion matrix for operation.
     Users_cal <- rbind(rep(1,U), Users)
     colnames(Users_cal) <- UserId
     Movies_cal <- rbind(bi, Movies)
     
     # Fix User, solve Movie
-
     Movies_cal <- parSapply(cl, as.character(MovieId), findSolve_R, solveBy = "Movies", train = train, lambda = lambda, user_mat = Users_cal, movie_mat = Movies_cal, au = au, bu = bu, bi = bi, mu = Ave_rating, f = f, USE.NAMES = T)
     
     # Update bi and Movies
@@ -176,16 +189,16 @@ ALS.R1R3 <- function(f = 10, lambda = 5, beta = 0.4, maxIters = 5, data = data,
     # Rating Matrix
     mat <- t(Users) %*% Movies
     
+    # Represent bu, bi, au*dev as a matrix
     bu_ui <- matrix(rep(NA, U*M), ncol = M)
-    for (i in 1:M) {
+    for (i in 1:M)
       bu_ui[,i] <- t(bu)
-    }
     
     bi_ui <- matrix(rep(NA, U*M), ncol = M)
-    for (u in 1:U) {
+    for (u in 1:U)
       bi_ui[u, ] <- bi
-    }
     
+    # Use tibble to speed up the tranformation of au*dev matrix.
     au_mat <- matrix(rep(au,M),nrow=U,byrow = F)
     dev_mat <- all_data %>%
       unique() %>%
@@ -201,9 +214,10 @@ ALS.R1R3 <- function(f = 10, lambda = 5, beta = 0.4, maxIters = 5, data = data,
     
     mu_ui <- matrix(rep(Ave_rating, U*M), ncol = M)
     
+    # Calculate the rating matrix
     R <- mat + mu_ui + bu_ui + bi_ui + au_dev_ui
     
-    # RMSE 
+    # Calculate the RMSE 
     est_rating <- as.matrix(R)
     colnames(est_rating)<-MovieId
     rownames(est_rating)<-UserId
