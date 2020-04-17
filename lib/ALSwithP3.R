@@ -1,10 +1,3 @@
-#installed.packages("remotes")
-remotes::install_github("TimothyKBook/krr")
-#installed.packages("krr")
-library(krr)
-library(dplyr)
-library(caret)
-
 # Solve RMSE
 RMSE <- function(rating, est_rating){
   sqr_err <- function(obs){
