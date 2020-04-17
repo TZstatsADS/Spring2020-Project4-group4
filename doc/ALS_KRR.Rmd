@@ -1,13 +1,18 @@
 ---
 title: "ALS with P3"
 author: "Yuqiao Liu, Hanbo Jiao"
-output: html_notebook
 ---
 
 
 ```{r}
 library(parallel)
 library(tidyverse)
+#installed.packages("remotes")
+remotes::install_github("TimothyKBook/krr")
+#installed.packages("krr")
+library(krr)
+library(dplyr)
+library(caret)
 source("../lib/ALSwithP3.R")
 ```
 
