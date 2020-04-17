@@ -46,7 +46,7 @@ data_test <- data[-train_ind, ]
 ### RMSE
 
 ```{r}
-RMSE <- function(rating, est_rating){
+RMSE_R <- function(rating, est_rating){
   sqr_err <- function(id){
     sqr_error <- (as.numeric(rating[id,3]) - est_rating[as.character(rating[id,1]), as.character(rating[id,2])])^2
     return(sqr_error)
@@ -59,7 +59,7 @@ RMSE <- function(rating, est_rating){
 ### Change function
 
 ```{r}
-findSolve <- function(id, solveBy, train, lambda, user_mat, movie_mat, au, bu, bi, mu, f){
+findSolve_R <- function(id, solveBy, train, lambda, user_mat, movie_mat, au, bu, bi, mu, f){
   id <- as.integer(id)
   # Fix Movies, solve User
   if(solveBy == "Movies"){
@@ -140,7 +140,7 @@ ALS.R1R3 <- function(f = 10, lambda = 5, beta = 0.4, maxIters = 5, data = data,
   testRMSE <- rep(NA, maxIters)
   
   
-  clusterExport(cl, "findSolve", envir = environment())
+  clusterExport(cl, "findSolve_R", envir = environment())
   clusterExport(cl, "f", envir = environment())
   clusterExport(cl, "UserId", envir = environment())
   clusterExport(cl, "MovieId", envir = environment())
@@ -154,7 +154,7 @@ ALS.R1R3 <- function(f = 10, lambda = 5, beta = 0.4, maxIters = 5, data = data,
     Users_cal <- rbind(au, bu, Users)
     
     # Fix Movie, solve User
-    Users_cal <- parSapply(cl, as.character(UserId), findSolve, solveBy = "Users", train = train, lambda = lambda, user_mat = Users_cal, movie_mat = Movies_cal, au = au, bu = bu, bi = bi, mu = Ave_rating, f = f, USE.NAMES = T)
+    Users_cal <- parSapply(cl, as.character(UserId), findSolve_R, solveBy = "Users", train = train, lambda = lambda, user_mat = Users_cal, movie_mat = Movies_cal, au = au, bu = bu, bi = bi, mu = Ave_rating, f = f, USE.NAMES = T)
     
     # Update au, bu and Users
     au[1,] <- Users_cal[1, ]
@@ -167,7 +167,7 @@ ALS.R1R3 <- function(f = 10, lambda = 5, beta = 0.4, maxIters = 5, data = data,
     
     # Fix User, solve Movie
 
-    Movies_cal <- parSapply(cl, as.character(MovieId), findSolve, solveBy = "Movies", train = train, lambda = lambda, user_mat = Users_cal, movie_mat = Movies_cal, au = au, bu = bu, bi = bi, mu = Ave_rating, f = f, USE.NAMES = T)
+    Movies_cal <- parSapply(cl, as.character(MovieId), findSolve_R, solveBy = "Movies", train = train, lambda = lambda, user_mat = Users_cal, movie_mat = Movies_cal, au = au, bu = bu, bi = bi, mu = Ave_rating, f = f, USE.NAMES = T)
     
     # Update bi and Movies
     bi[1,] <- Movies_cal[1,]
@@ -205,8 +205,10 @@ ALS.R1R3 <- function(f = 10, lambda = 5, beta = 0.4, maxIters = 5, data = data,
     
     # RMSE 
     est_rating <- as.matrix(R)
-    trainRMSE[iter] <- RMSE(train, est_rating)
-    testRMSE[iter] <- RMSE(test, est_rating)
+    colnames(est_rating)<-MovieId
+    rownames(est_rating)<-UserId
+    trainRMSE[iter] <- RMSE_R(train, est_rating)
+    testRMSE[iter] <- RMSE_R(test, est_rating)
     
     E = Sys.time()
     
@@ -225,18 +227,108 @@ ALS.R1R3 <- function(f = 10, lambda = 5, beta = 0.4, maxIters = 5, data = data,
 }
 ```
 
-```{r}
-cl = makeCluster(8)
-```
 
 ```{r}
-result = ALS.R1R3(f = 10, lambda = 5, beta = 0.4, maxIters = 20 , data = data,
+cl = makeCluster(8)
+result = ALS.R1R3(f = 10, lambda = 5, beta = 0.4, maxIters = 1 , data = data,
             train = data_train, test = data_test)
 ```
 
 ```{r}
 save(result, file = '../output/resultR1R3.Rdata')
 ```
+
+
+
+# crossvalidation
+
+
+
+
+
+```{r,warning=F}
+source("../lib/ALSwithP3.R")
+source("../lib/cross_validation.R")
+# installed.packages("remotes")
+remotes::install_github("TimothyKBook/krr")
+# installed.packages("krr")
+library(krr)
+library(dplyr)
+library(caret)
+
+
+ALS_R_KRR <- function(data, train, test, f, maxIters, lambda_als, lambda_p, sigma,beta){
+
+  # f = f
+  # lambda = lambda_als
+  # beta = beta
+  # maxIters = maxIters
+  # data = data
+  #   train = train
+  #   test = test
+    
+  result_ALS <- ALS.R1R3(f = f, lambda = lambda_als, beta = beta, maxIters = maxIters , data = data,
+            train = train, test = test)
+  
+  KRR.Post_R(result_ALS=result_ALS,lambda=lambda_p, sigma=sigma, data, train, test)
+}
+
+# Paramter tuning for ALS_krr
+
+fs <- c(15)
+lambdas_als <- c(1, 5,10)
+lambdas_P <- c(1, 5, 10)
+sigmas <- c(1,2,3)
+betas <- c(0.4)
+
+cv.df <- expand.grid("fs"=fs, 
+                     "lambdas_als"=lambdas_als, 
+                     "lambdas_p"=lambdas_P, 
+                     "sigmas" =sigmas,
+                     "betas"=betas)
+```
+
+```{r, eval=FALSE}
+
+cl <- makeCluster(4)
+# load(file="../output/cvtmpRRRRR.RData")
+x=cv.df %>%
+  as_tibble() %>%
+  mutate(train_mean=NA,test_mean=NA)
+
+for (i in 1:dim(x)[1]){
+
+  tmp <- cv.functionA3R3P3(dat_train=data,
+                       K=2,
+                       f=x[i,]$fs,
+                       maxIter=15,
+                       lambdas_als=x[i,]$lambdas_als,
+                       lambdas_p=x[i,]$lambdas_p,
+                       sigmas=x[i,]$sigmas,
+                       betas=x[i,]$betas)
+  
+  x[i,"train_mean"]=tmp$mean_train_rmse
+  x[i,"test_mean"]=tmp$mean_test_rmse
+
+  rm(tmp)
+}
+# save(x, file="../output/cvtmpRRRRR.RData")
+
+stopCluster(cl)
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

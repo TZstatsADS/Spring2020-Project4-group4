@@ -183,3 +183,44 @@ ALS_KRR <- function(data, train, test, f, maxIters, lambda_als, lambda_p, sigma)
   result_ALS <- ALS(data, train, test, f, maxIters, lambda_als)
   KRR.Post(result_ALS=result_ALS,lambda=lambda_p, sigma=sigma, data, train, test)
 }
+
+
+KRR.Post_R <- function (result_ALS, lambda = 10,sigma=1.5, data, train, test) {
+  U=data$userId%>%unique()%>%length
+  I=data$movieId%>%unique()%>%length
+  
+  ## Identify Movie Matrix (X), Normalized Movie Matrix (norm.X), and ratings (r) for each user, save in lists
+  
+  ## get estimating matrix
+  est_rating <- matrix(NA, ncol = I, nrow=U)
+  colnames(est_rating) <- levels(as.factor(data$movieId))
+  rownames(est_rating) <- levels(as.factor(data$userId))
+  
+  X_full <- result_ALS$Movie
+  norm.X_full <- t(norm.row(X_full))
+  norm.X_full[is.na(norm.X_full)] <- 0
+  
+  
+  
+  cl <- makeCluster(4)
+  
+  clusterExport(cl, "train", envir = environment())
+  clusterExport(cl, "norm.X_full", envir = environment())
+  clusterExport(cl, "X_full", envir = environment())
+  clusterExport(cl, "krr", envir = environment())
+  clusterExport(cl, "lambda", envir = environment())
+  clusterExport(cl, "sigma", envir = environment())
+  est_rating=parSapply(cl, as.character(1:U),rating_krr, USE.NAMES = T)
+  est_rating=t(est_rating)
+  colnames(est_rating)<-result_ALS$Rating%>%colnames
+  # Summerize
+  train_RMSE <- RMSE_R(train, est_rating)
+  cat("training RMSE:", train_RMSE, "\t")
+  
+  
+  test_RMSE <- RMSE_R(test, est_rating)
+  cat("test RMSE:",test_RMSE, "\n")
+  
+  return(list(krr.rating=est_rating, train_RMSE = train_RMSE, test_RMSE = test_RMSE))
+  
+}
