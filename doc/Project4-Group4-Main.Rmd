@@ -34,7 +34,7 @@ source("../lib/ALSwithP3.R")
 source("../lib/cross_validation.R")
 ```
 # Paramter tuning for ALS_krr
-```{r}
+```{r, eval=FALSE}
 fs <- c(5, 10, 15)
 lambdas_als <- c(1, 5,10)
 lambdas_P <- c(1, 5, 10)
