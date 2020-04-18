@@ -4,7 +4,7 @@ author: ""
 ---
 
 
-```{r}
+```{r, message=FALSE}
 library(parallel)
 library(tidyverse)
 # installed.packages("remotes")
