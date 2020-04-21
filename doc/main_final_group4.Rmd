@@ -162,7 +162,8 @@ Here, we fit the ALS with post-processing, KRR
 ```{r, eval=FALSE, warning=FALSE}
 cl <- makeCluster(cores)
 
-alsP3Result <- ALS_KRR(data, train, test, f=15, maxIters=10, lambda_als=10, lambda_p=1, sigma=1)
+alsP3Result <- ALS_KRR(data, train, test, f=15, maxIters=10, 
+                       lambda_als=10, lambda_p=1, sigma=1)
 
 stopCluster(cl)
 save(alsP3Result, file = "../output/alsP3Result.RData")
@@ -172,7 +173,8 @@ save(alsP3Result, file = "../output/alsP3Result.RData")
  The final result of our model 1 is
 ```{r ALS with KRR result}
 load(file="../output/alsP3Result.RData")
-cat("RMSE for train set:", round(alsP3Result$train_RMSE, 4), "  RMSE for test set:", round(alsP3Result$test_RMSE, 4))
+cat("RMSE for train set:", round(alsP3Result$train_RMSE, 4), 
+    "  RMSE for test set:", round(alsP3Result$test_RMSE, 4))
 ```
 
 
@@ -284,7 +286,9 @@ arp_result[which.min(arp_result$test_mean),][1:5]
 Here, we fit the complete model with post-processing, KRR
 ```{r ALS with R1R3 With KRR, eval=FALSE}
 cl <- makeCluster(cores)
-ALS.R1R3.KRR.model <- ALS_R_KRR(data, data_train, data_test, f = 15, maxIters = 10, lambda_als = 10, lambda_p = 1, sigma = 1, beta = 0.2)
+ALS.R1R3.KRR.model <- ALS_R_KRR(data, data_train, data_test, f = 15,
+                                maxIters = 10, lambda_als = 10, lambda_p = 1, 
+                                sigma = 1, beta = 0.2)
 stopCluster(cl)
 save(ALS.R1R3.KRR.model, file="../output/ALS_R1R3_KRR_model.RData")
 
@@ -295,7 +299,8 @@ stopCluster(cl)
  The final result of our model 2 is
 ```{r ALS with R1R3 and KRR result}
 load(file="../output/ALS_R1R3_KRR_model.RData")
-cat("RMSE for train set:", round(ALS.R1R3.KRR.model$train_RMSE, 4), "  RMSE for test set:", round(ALS.R1R3.KRR.model$test_RMSE, 4))
+cat("RMSE for train set:", round(ALS.R1R3.KRR.model$train_RMSE, 4),
+    "  RMSE for test set:", round(ALS.R1R3.KRR.model$test_RMSE, 4))
 ```
 
 We noticed that without P3, the matrix factorization alone performs better. With our previous attempts, we chose the following parameters. (We also noticed that the optimal parameters for matrix factorization are different with or without the post-processing)
