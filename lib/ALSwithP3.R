@@ -1,11 +1,23 @@
-# Solve RMSE
+
+  # Solve RMSE
+  # RMSE <- function(rating, est_rating){
+  #   sqr_err <- function(obs){
+  #     sqr_error <- (obs[3] - est_rating[as.character(obs[2]), as.character(obs[1])])^2
+  #     return(sqr_error)
+  #   }
+  #   return(sqrt(mean(apply(rating, 1, sqr_err))))  
+  # }
+  
+  
   RMSE <- function(rating, est_rating){
-    sqr_err <- function(obs){
-      sqr_error <- (obs[3] - est_rating[as.character(obs[2]), as.character(obs[1])])^2
+    sqr_err <- function(id){
+      sqr_error <- (as.numeric(rating[id,3]) - est_rating[as.character(rating[id,1]), as.character(rating[id,2])])^2
       return(sqr_error)
     }
-    return(sqrt(mean(apply(rating, 1, sqr_err))))  
+    error = sapply(1:nrow(rating), sqr_err)
+    return(sqrt(mean(error)))  
   }
+  
 
 minFunc <- function(rating, matSolv, lambda){
   set.seed(1)
@@ -96,16 +108,19 @@ ALS <- function(data, train, test, f, maxIters, lambda=5){
   }
   # RMSE
   est_rating <- t(Users) %*% Movies
-  trainRMSE <- RMSE(train, est_rating)
-  testRMSE <- RMSE(test, est_rating)
+  # rownames(est_rating)<-UserId
+  # colnames(est_rating)<-as.character(MovieId)
+  # trainRMSE <- RMSE(train, est_rating)
+  # testRMSE <- RMSE(test, est_rating)
   
   
   
   return(list("User" = Users, 
               "Movie" = Movies, 
-              "Rating" = est_rating, 
-              "TrainRMSE" = trainRMSE, 
-              "TestRMSE" = testRMSE))
+              "Rating" = est_rating#, 
+              # "TrainRMSE" = trainRMSE, 
+              # "TestRMSE" = testRMSE
+              ))
 }
 
 
