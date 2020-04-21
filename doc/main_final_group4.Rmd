@@ -8,7 +8,7 @@ knitr::opts_chunk$set(error = TRUE)
 knitr::opts_chunk$set(cache = T)
 knitr::opts_chunk$set(message = FALSE)
 knitr::opts_chunk$set(warning = FALSE)
-options(mc.cores = parallel::detectCores())
+
 library(tidyverse)
 library(ggplot2)
 library(anytime)
@@ -17,7 +17,12 @@ library(parallel)
 library(krr)
 library(dplyr)
 
-cl <- makeCluster(4)
+cores <- detectCores()
+
+source("../lib/cross_validation.R")
+source("../lib/ALS_R_KRR.R")
+source("../lib/ALSwithR1R3.R")
+source("../lib/ALSwithP3.R")
 ```
 
 # Introduction
@@ -33,14 +38,15 @@ In this project, our group implement matrix factorization by focusing on differe
 
 # Model 1: Alternating Least Squares + Kernel Ridge Regression
 ## Step 1. Load Data and Train-Test Split
-In this step, we loaded the data and splitted the original dataset to training set(80%) and test set(20%). Also, we add a new variable, which will be used and explained in the next model section.
+In this step, we loaded the data and added variable timediff for temporal dynamics, which is the difference between the user's rating time and the average rating time of this user. Then we splitted the original dataset to training set(80%) and test set(20%)
 ```{r}
-data <- read.csv("../data/ml-latest-small/ratings.csv")
 # Convert timestamp and set up time difference
+data <- read.csv("../data/ml-latest-small/ratings.csv")
 data$timestamp <- anydate(data$timestamp)
-data <- data %>% 
+data_R <- data %>% 
   group_by(userId) %>% 
-  mutate(timediff = (timestamp - mean(timestamp)) %>% as.numeric) %>% 
+  mutate(timediff = (timestamp - mean(timestamp)) %>% 
+           as.numeric) %>% 
   ungroup() %>%
   arrange(timestamp)
 
@@ -49,9 +55,12 @@ set.seed(1)
 # train-test split (.8/.2)
 train_ind <- createDataPartition(data$userId, p=.8, list=F)
 
+data_train <- data_R[c(train_ind), ]
+data_test <- data_R[-c(train_ind), ]
 
-data_train <- data[train_ind, ]
-data_test <- data[-train_ind, ]
+train <- data_train[, 1:3]
+test <- data_test[, 1:3]
+
 ```
 
 ## Step 2. Model Setup
@@ -81,8 +90,7 @@ $$x_{j_2} = \frac{q_j}{\|q_j\|}$$
 $K$: 
 $$K(x_{i}^T, X) = x_i^Tx_j$$ 
 $$K(x_{i}^T, X) = \exp(2(x_i^Tx_j -1))$$
-$\lambda$:
-$$\lambda = 0.5$$
+
 We first defined similarity between movies by the above formula. Then we used this similarity S to apply Kernel Ridge Regression prediction. 
 
 ### 2. Algorithm Setup
@@ -96,22 +104,23 @@ lambda_p = 1, 5, 10
 sigmas = 1,2,3
 ```{r, eval=FALSE}
 fs <- c(5, 10, 15)
-lambdas_als <- c(1, 5,10)
+lambdas_als <- c(1, 5, 10)
 lambdas_P <- c(1, 5, 10)
-sigmas <- c(1,2,3)
+sigmas <- c(1, 2, 3)
 
 cv.df <- expand.grid("fs"=fs, 
                      "lambdas_als"=lambdas_als, 
                      "lambdas_p"=lambdas_P, 
-                     "sigmas" =sigmas)
+                     "sigmas"=sigmas)
 ```
 The code of parameter tuning is
 ```{r, eval=FALSE}
-cl <- makeCluster(detectCores())
+cl <- makeCluster(cores)
 
-x=cv.df %>%
+x <- cv.df %>%
   as_tibble() %>%
-  mutate(train_mean=NA,test_mean=NA)
+  mutate(train_mean=NA,
+         test_mean=NA)
 
 for (i in 1:dim(x)[1]){
   tmp <- cv.functionYQ(dat_train=data,
@@ -138,37 +147,31 @@ x
 ```
 The optimal parameters for ALS + KRR is
 ```{r,warning=FALSE}
-x[which.min(x$test_mean),]
+x[which.min(x$test_mean), ][1:4]
 ```
 ### 4. Optimal Model
  - Model Fitting
- 
 Here, we fit the ALS with post-processing, KRR
-```{r, eval=FALSE}
-set.seed(1)
-cl <- makeCluster(4)
+```{r, eval=FALSE, warning=FALSE}
+cl <- makeCluster(cores)
 
-alsP3Result <- ALS_KRR(data, train, test, f=15, maxIters=10, 
-                       lambda_als=10, lambda_p=1, sigma=1)
+alsP3Result <- ALS_KRR(data, train, test, f=15, maxIters=10, lambda_als=10, lambda_p=1, sigma=1)
 
 stopCluster(cl)
-save(alsP3Result,file = "../output/alsP3Result.RData")
+save(alsP3Result, file = "../output/alsP3Result.RData")
 ```
- - Model Evaluation
  
+ - Model Evaluation
  The final result of our model 1 is
 ```{r ALS with KRR result}
 load(file="../output/alsP3Result.RData")
-cat("RMSE for train set:", round(alsP3Result$train_RMSE, 4), 
-    "  RMSE for test set:", round(alsP3Result$test_RMSE, 4))
+cat("RMSE for train set:", round(alsP3Result$train_RMSE, 4), "  RMSE for test set:", round(alsP3Result$test_RMSE, 4))
 ```
 
 
 #Model 2:Alternating Least Squares + Penalty of magnitudes + Temporal Dynamics + Kernel Ridge Regression
 
 ## Step 1. Load Data and Train-Test Split
-We added variable timediff for temporal dynamics, which is the difference between the user's rating time and the average rating time of this user. 
-
 
 ## Step 2. Model Setup
 ### 1. Equations recap
@@ -199,25 +202,6 @@ $$dev_u(t) = sign(t - t_u)·|t-t_u|^\beta$$
 The final objective function of our model 2 is
 $$min_{q,p} \sum_{(u,i) \in K} [r_{ui}-(q_i^Tp_u + \mu + b_u + b_i + \alpha_udev_u(t)]^2 + \lambda\sum( \| q_i\|^2 +\| p_u\|^2 + b_i^2 + b_u^2 + \alpha_u^2)$$
 
-
-### Post-processing
-Kernel Ridge Regression:
-$$\hat{\beta} = (X^{T}X + \lambda I)^{-1}X^{T}y $$
-$$\hat{y_{i}} = {x_i}^T\hat{\beta}$$
-Equilvalent to:
-$$\hat{\beta} = X^T(XX^T + \lambda I)^{-1}y$$ 
-
-$$\hat{y}_{i} = K(x_i^{T}, X)(K(X,X) + \lambda I)^{-1}y$$ 
-$y$: vector of movies rated by user i
-$X$: a matrix of observations - each row of X is normalized vector of features of one movie j rated by user i: 
-$$x_{j_2} = \frac{q_j}{\|q_j\|}$$ 
-
-$K$: 
-$$K(x_{i}^T, X) = x_i^Tx_j$$ 
-$$K(x_{i}^T, X) = \exp(2(x_i^Tx_j -1))$$
-$\lambda$:
-$$\lambda = 0.5$$
-
 ### 2. Algorithm Setup
 For matrix factorization, with the method in paper4, to include $b_u$, $b_i$, and $a_u$ in the iterations, we add one row to the movie matrix and two rows to the user matrix. To speed up the algorithm, we use parallel package to parallelize computations and tibble in the factorization function.
 
@@ -247,13 +231,8 @@ cv.df <- expand.grid("fs"=fs,
 ```
 The code of parameter tuning is
 ```{r,eval=FALSE}
-source("../lib/cross_validation.R")
-source("../lib/ALS_R_KRR.R")
-source("../lib/ALSwithR1R3.R")
-source("../lib/ALSwithP3.R")
-
 set.seed(1)
-cl <- makeCluster(4)
+cl <- makeCluster(cores)
 
 arp_result=cv.df %>%
   as_tibble() %>%
@@ -287,60 +266,37 @@ arp_result
 ```
 The optimal parameters for ALS + R1R3 + KRR is
 ```{r,warning=FALSE}
-arp_result[which.min(arp_result$test_mean),]
+arp_result[which.min(arp_result$test_mean),][1:5]
 ```
 
 ### 4. Optimal Model
  - Model Fitting
- 
- To see the how ALS with R1R3 works, we first conducted the matrix factorization separately
-```{r ALS with R1R3, eval=FALSE}
-# ALS with R1R3
-cl = makeCluster(8)
-ALS.R1R3.model <- ALS.R1R3(f = 15, lambda = 1, beta = 0.2, maxIters = 15, 
-                           data = data,train = data_train, test = data_test)
-stopCluster(cl)
-save(ALS.R1R3.model, file="../output/ALS_R1R3_model.RData")
-stopCluster(cl)
-```
- Visualization of training and test RMSE by different iterations
-```{r ALS with R1R3 plot}
-load(file="../output/ALS_R1R3_model.RData")
-g1 <- data.frame(iteration = c(1:15),Training_MSE = ALS.R1R3.model$`Train RMSE`,
-                 Test_MSE = ALS.R1R3.model$`Test RMSE`) %>%
-  gather(key = Train_Test,value = RMSE,-iteration) %>%
-  ggplot(aes(x = iteration, y = RMSE, col = Train_Test)) + geom_point() +
-  theme_light()
-g1
-```
 Here, we fit the complete model with post-processing, KRR
 ```{r ALS with R1R3 With KRR, eval=FALSE}
-cl = makeCluster(8)
-ALS.R1R3.KRR.model <- ALS_R_KRR(data, data_train, data_test, f = 15, maxIters = 15, 
-                                lambda_als = 1, lambda_p = 1, sigma = 1,beta = 0.2)
+cl <- makeCluster(cores)
+ALS.R1R3.KRR.model <- ALS_R_KRR(data, data_train, data_test, f = 15, maxIters = 10, lambda_als = 10, lambda_p = 1, sigma = 1, beta = 0.2)
 stopCluster(cl)
 save(ALS.R1R3.KRR.model, file="../output/ALS_R1R3_KRR_model.RData")
 
 stopCluster(cl)
 ```
  - Model Evaluation
- 
  We can see that when we add post-processing to the matrix factorization, the performance decrease.
  The final result of our model 2 is
 ```{r ALS with R1R3 and KRR result}
 load(file="../output/ALS_R1R3_KRR_model.RData")
-cat("RMSE for train set:", round(ALS.R1R3.KRR.model$train_RMSE, 4), 
-    "  RMSE for test set:", round(ALS.R1R3.KRR.model$test_RMSE, 4))
+cat("RMSE for train set:", round(ALS.R1R3.KRR.model$train_RMSE, 4), "  RMSE for test set:", round(ALS.R1R3.KRR.model$test_RMSE, 4))
 ```
- We noticed that without P3, the matrix factorization alone performs better. With our previous attempts, we chose the following parameters. (We also noticed that the optimal parameters for matrix factorization are different with or without the post-processing)
+We noticed that without P3, the matrix factorization alone performs better. With our previous attempts, we chose the following parameters. (We also noticed that the optimal parameters for matrix factorization are different with or without the post-processing)
 ```{r R1R3 only, eval=FALSE}
 set.seed(1)
-cl = makeCluster(8)
+cl <- makeCluster(cores)
+
 ALS.R1R3.only <- ALS.R1R3(f = 10, lambda = 10, beta = 0.4, maxIters = 15 , data = data,
                           train = data_train, test = data_test)
+
 stopCluster(cl)
 save(ALS.R1R3.only, file="../output/ALS_R1R3_only.RData")
-stopCluster(cl)
 ```
 Visualization of training and test RMSE by different iterations
 ```{r ALS with R1R3 only plot}
@@ -366,4 +322,3 @@ cat("RMSE for train set:", round((ALS.R1R3.only$`Train RMSE`)[15], 4),
 | test RMSE | 0.9698 | 1.2418 | 0.851 |
 
 By comparing RMSEs, we know that, given (A3+P3), adding (R1+R3) tends to overfit. With (R1+R3), the training RMSE is lower but the test RMSE is higher. But without KRR, (A3 + R1R3) performs better than (A3 + KRR). (A3 + R1R3) is the most robust model, with a higher training MSE but lower test RMSE. Thus, we think KRR and R1R3 may not work well together, but can improve the original matrix factorization separately. 
-
