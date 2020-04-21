@@ -16,6 +16,7 @@ library(anytime)
 library(caret)
 library(parallel)
 library(krr)
+library(dplyr)
 
 cl <- makeCluster(4)
 ```
@@ -73,6 +74,7 @@ $$dev_u(t) = sign(t - t_u)·|t-t_u|^\beta$$
 The final objective function of our model 2 is
 $$min_{q,p} \sum_{(u,i) \in K} [r_{ui}-(q_i^Tp_u + \mu + b_u + b_i + \alpha_udev_u(t)]^2 + \lambda\sum( \| q_i\|^2 +\| p_u\|^2 + b_i^2 + b_u^2 + \alpha_u^2)$$
 
+
 ### Post-processing
 Kernel Ridge Regression:
 $$\hat{\beta} = (X^{T}X + \lambda I)^{-1}X^{T}y $$
@@ -95,17 +97,112 @@ $$\lambda = 0.5$$
 For matrix factorization, with the method in paper4, to include $b_u$, $b_i$, and $a_u$ in the iterations, we add one row to the movie matrix and two rows to the user matrix. To speed up the algorithm, we use parallel package to parallelize computations and tibble in the factorization function.
 
 ### 3. Parameter Tuning
-To save the time, we use the refult of parameters tuning of ALS and KRR from the former model.
+To save the time, with the refult of parameters tuning of ALS and KRR from the former model and some attempts, we only tested the following parameters here.
+lambda_als = 1,5,10
+beta = 0.2,0.4,0.5
+And set
+f = 15
+lambda_p = 1
+sigmas = 1
 ```{r}
-# will output graphs of the results of different parameters
+fs <- c(15)
+lambdas_P <- c(1)
+sigmas = c(1)
+
+
+lambdas_als <- c(1, 5,10)
+betas <- c(0.2,0.4,0.5)
+
+cv.df <- expand.grid("fs"=fs, 
+                     "lambdas_als"=lambdas_als, 
+                     "lambdas_p"=lambdas_P, 
+                     "sigmas" =sigmas,
+                     "betas"=betas)
 
 ```
+The code of parameter tuning
+```{r}
+source("../lib/cross_validation.R")
+source("../lib/ALS_R_KRR.R")
+source("../lib/ALSwithR1R3.R")
+source("../lib/ALSwithP3.R")
 
+set.seed(1)
+# cl <- makeCluster(4)
+# 
+# arp_result=cv.df %>%
+#   as_tibble() %>%
+#   mutate(train_mean=NA,test_mean=NA)
+# 
+# for (i in 1:dim(arp_result)[1]){
+# 
+#   tmp <- cv.functionA3R3P3(dat_train=data,
+#                        K=4,
+#                        f=x[i,]$fs,
+#                        maxIter=15,
+#                        lambdas_als=x[i,]$lambdas_als,
+#                        lambdas_p=x[i,]$lambdas_p,
+#                        sigmas=x[i,]$sigmas,
+#                        betas=x[i,]$betas)
+#   
+#   arp_result[i,"train_mean"]=tmp$mean_train_rmse
+#   arp_result[i,"test_mean"]=tmp$mean_test_rmse
+# 
+#   rm(tmp)
+# }
+# 
+# save(arp_result, file="../output/cvARP.RData")
+# 
+# stopCluster(cl)
+
+load(file="../output/cvARP.RData")
+arp_result
+```
+The optimal parameters for ALS + R1R3 + KRR is
+```{r,warning=FALSE}
+arp_result[which.min(arp_result$test_mean),]
+```
 
 ### 4. Optimal Model
  - Model Fitting
-```{r}
+ To see the how ALS with R1R3 works, we first conducted the matrix factorization separately
+```{r ALS with R1R3, warning=FALSE}
+# ALS with R1R3
+# cl = makeCluster(8)
+# ALS.R1R3.model <- ALS.R1R3(f = 15, lambda = 1, beta = 0.2, maxIters = 15 , data = data,train = data_train, test = data_test)
+# stopCluster(cl)
+# save(ALS.R1R3.model, file="../output/ALS_R1R3_model.RData")
+# stopCluster(cl)
 
+load(file="../output/ALS_R1R3_model.RData")
+```
+ Visualization of training and test RMSE by different iterations
+```{r ALS with R1R3 plot}
+g1 <- data.frame(iteration = c(1:15),Training_MSE = ALS.R1R3.model$`Train RMSE`,
+                 Test_MSE = ALS.R1R3.model$`Test RMSE`) %>%
+  gather(key = Train_Test,value = RMSE,-iteration) %>%
+  ggplot(aes(x = iteration, y = RMSE, col = Train_Test)) + geom_point() +
+  theme_light()
+g1
+```
+Here, we fit the complete model wiht post-processing, KRR
+```{r ALS with R1R3 With KRR, warning=FALSE,message=FALSE,results = 'hide'}
+# cl = makeCluster(8)
+# ALS.R1R3.KRR.model <- ALS_R_KRR(data, data_train, data_test, f = 15, maxIters = 15, lambda_als = 1, lambda_p = 1, sigma = 1,beta = 0.2)
+# stopCluster(cl)
+# save(ALS.R1R3.KRR.model, file="../output/ALS_R1R3_KRR_model.RData")
+# 
+# stopCluster(cl)
+
+load(file="../output/ALS_R1R3_KRR_model.RData")
 ```
  - Model Evaluation
+ We can see that when we add post-processing to the matrix factorization, the performance decrease.
+ The final result of our model 2 is
+```{r ALS with R1R3 and KRR result}
+cat("RMSE for train set:", round(ALS.R1R3.KRR.model$train_RMSE, 4), "  RMSE for test set:", round(ALS.R1R3.KRR.model$test_RMSE, 4))
+```
+ 
+ 
+
 

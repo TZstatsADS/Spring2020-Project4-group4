@@ -8,6 +8,7 @@ cv.functionYQ <- function(dat_train, K, f, maxIter,lambdas_als, lambdas_p,sigmas
   ### - train data frame
   ### - K: a number stands for K-fold CV
   ### - tuning parameters 
+  set.seed(1)
   
   n <- dim(dat_train)[1]
   n.fold <- round(n/K, 0)
@@ -42,6 +43,7 @@ cv.functionA3R3P3 <- function(dat_train, K, f, maxIter,lambdas_als, lambdas_p,si
   ### - train data frame
   ### - K: a number stands for K-fold CV
   ### - tuning parameters 
+  set.seed(1)
   
     n <- dim(dat_train)[1]
   n.fold <- round(n/K, 0)

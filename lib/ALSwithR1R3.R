@@ -12,6 +12,8 @@ RMSE_R <- function(rating, est_rating){
 ##################################### Matrix Iteration #####################################
 ############## solve function for new user or movies matrix in each iteration ##############
 findSolve_R <- function(id, solveBy, train, lambda, user_mat, movie_mat, au, bu, bi, mu, f){
+  set.seed(1)
+  
   id <- as.integer(id)
   # Fix Movies, solve User
   if(solveBy == "Movies"){
@@ -54,6 +56,7 @@ ALS.R1R3 <- function(f = 10, lambda = 5, beta = 0.4, maxIters = 5, data = data,
   # train: Training data
   # test: Test data
   #
+  set.seed(1)
   
   # Calculate the dev of data
   train = train %>% mutate(dev = ifelse(timediff>0, 1, -1)*abs(timediff)^beta)

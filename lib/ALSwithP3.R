@@ -8,11 +8,13 @@ RMSE <- function(rating, est_rating){
 }
 
 minFunc <- function(rating, matSolv, lambda){
+  set.seed(1)
   solve(matSolv %*% t(matSolv) + lambda * diag(f)) %*% matSolv %*% rating
 }
 
 # The Function used to Find the 
 findSolve <- function(id, solveBy, train, lambda){
+  set.seed(1)
   id <- as.integer(id)
   # Fix Movies, solve User
   if(solveBy=="Movies"){
@@ -37,6 +39,8 @@ findSolve <- function(id, solveBy, train, lambda){
 
 ALS <- function(data, train, test, f, maxIters, lambda=5){
   # Factorized the Movies and User matrices
+  set.seed(1)
+
   UserId <- unique(data$userId)
   U <- length(UserId)
   
@@ -117,6 +121,8 @@ norm.row <- function (m) {
 ## a function returns a list containing estimated rating matrix, training and testing RMSEs.
 
 rating_krr<-function(u){
+  set.seed(1)
+  
   u=as.numeric(u)
   norm.X<-NULL
   r <-NULL
@@ -172,6 +178,8 @@ KRR.Post <- function (result_ALS, lambda = 10,sigma=1.5, data, train, test) {
 
 # Func of ALS with P3
 ALS_KRR <- function(data, train, test, f, maxIters, lambda_als, lambda_p, sigma){
+  set.seed(1)
+  
   # data=dat_train
   # train=train.data
   # test=test.data
