@@ -287,7 +287,7 @@ Here, we fit the complete model with post-processing, KRR
 ```{r ALS with R1R3 With KRR, eval=FALSE}
 cl <- makeCluster(cores)
 ALS.R1R3.KRR.model <- ALS_R_KRR(data, data_train, data_test, f = 15,
-                                maxIters = 10, lambda_als = 10, lambda_p = 1, 
+                                maxIters = 10, lambda_als = 1, lambda_p = 1, 
                                 sigma = 1, beta = 0.2)
 stopCluster(cl)
 save(ALS.R1R3.KRR.model, file="../output/ALS_R1R3_KRR_model.RData")
