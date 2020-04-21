@@ -152,9 +152,6 @@ KRR.Post <- function (result_ALS, lambda = 10,sigma=1.5, data, train, test) {
   norm.X_full[is.na(norm.X_full)] <- 0
   
   
-  
-  cl <- makeCluster(4)
-  
   clusterExport(cl, "train", envir = environment())
   clusterExport(cl, "norm.X_full", envir = environment())
   clusterExport(cl, "X_full", envir = environment())
