@@ -1,7 +1,10 @@
 ---
 title: "Project 4"
 author: "Group 4"
-output: pdf_document
+output:
+  pdf_document: default
+  html_document:
+    df_print: paged
 ---
 ```{r set up, include = F}
 knitr::opts_chunk$set(error = TRUE)
@@ -113,6 +116,7 @@ cv.df <- expand.grid("fs"=fs,
                      "lambdas_p"=lambdas_P, 
                      "sigmas"=sigmas)
 ```
+
 The code of parameter tuning is
 ```{r, eval=FALSE}
 cl <- makeCluster(cores)
@@ -140,15 +144,18 @@ save(x, file="../output/cvtmp.RData")
 
 stopCluster(cl)
 ```
+
 The result is like
 ```{r}
 load(file="../output/cvtmp.RData")
 x
 ```
+
 The optimal parameters for ALS + KRR is
 ```{r,warning=FALSE}
 x[which.min(x$test_mean), ][1:4]
 ```
+
 ### 4. Optimal Model
  - Model Fitting
 Here, we fit the ALS with post-processing, KRR
@@ -229,6 +236,7 @@ cv.df <- expand.grid("fs"=fs,
                      "betas"=betas)
 
 ```
+
 The code of parameter tuning is
 ```{r,eval=FALSE}
 set.seed(1)
@@ -259,11 +267,13 @@ save(arp_result, file="../output/cvARP.RData")
 
 stopCluster(cl)
 ```
+
 The result is 
 ```{r}
 load(file="../output/cvARP.RData")
 arp_result
 ```
+
 The optimal parameters for ALS + R1R3 + KRR is
 ```{r,warning=FALSE}
 arp_result[which.min(arp_result$test_mean),][1:5]
@@ -287,6 +297,7 @@ stopCluster(cl)
 load(file="../output/ALS_R1R3_KRR_model.RData")
 cat("RMSE for train set:", round(ALS.R1R3.KRR.model$train_RMSE, 4), "  RMSE for test set:", round(ALS.R1R3.KRR.model$test_RMSE, 4))
 ```
+
 We noticed that without P3, the matrix factorization alone performs better. With our previous attempts, we chose the following parameters. (We also noticed that the optimal parameters for matrix factorization are different with or without the post-processing)
 ```{r R1R3 only, eval=FALSE}
 set.seed(1)
@@ -298,6 +309,7 @@ ALS.R1R3.only <- ALS.R1R3(f = 10, lambda = 10, beta = 0.4, maxIters = 15 , data 
 stopCluster(cl)
 save(ALS.R1R3.only, file="../output/ALS_R1R3_only.RData")
 ```
+
 Visualization of training and test RMSE by different iterations
 ```{r ALS with R1R3 only plot}
 load(file="../output/ALS_R1R3_only.RData")
@@ -308,6 +320,7 @@ g2 <- data.frame(iteration = c(1:15),Training_MSE = ALS.R1R3.only$`Train RMSE`,
   theme_light()
 g2
 ```
+
 We can see, without post-processing, the regularization can significantly reduce the RMSE in the second iteration. The final result is
 ```{r ALS with R1R3 only result}
 load(file="../output/ALS_R1R3_only.RData")
