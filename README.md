@@ -19,7 +19,7 @@ Term: Spring 2020
 Please see [main_final_group4.pdf](doc/main_final_group4.pdf) for final report.
 
 	
-**Contribution statement**: [default] All team members listed above discussed the work of this project. All team members listed above contributed equally in all stages of this project.
+**Contribution statement**: All team members listed above discussed the work of this project. All team members listed above contributed equally in all stages of this project.
 
 For the algorithms, Yuqiao Liu worked on ALS + KRR functions and conducted them on the dataset. Hanbo Jiao and Jinxu Xiang worked on ALS + R1R3 + KRR functoins and conducted them on the dataset. Huize Huang helped them conduct the functions on the dataset. 
 
