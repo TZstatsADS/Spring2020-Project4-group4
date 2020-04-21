@@ -15,6 +15,7 @@ Term: Spring 2020
 + Project summary: In this project, our group implement matrix factorization by focusing on different versions of alternating least squares algorithm for different Regularizations and Kernel Ridge Regression as Post-processing. The objective is to produce a good prediction of users’ preferences for movies on on the MovieLens dataset. For this project, our team is assigned with Pairing combination 12 + 14 from the Collaborative, which is showed below. For evaluation, we compared RMSE results for different methods. Our group used R language to product model and reports.
 	+ Alternating Least Squares + Kernel Ridge Regression
 	+ Alternating Least Squares + Penalty of magnitudes + Temporal Dynamics + Kernel Ridge Regression
+Please see [main_final_group4.pdf](doc/main_final_group4.pdf) for final report.
 
 	
 **Contribution statement**: [default] All team members contributed equally in all stages of this project. All team members approve our work presented in this GitHub repository including this contributions statement. 
