@@ -33,16 +33,25 @@ In this project, our group implement matrix factorization by focusing on differe
 
 # Model 1: Alternating Least Squares + Kernel Ridge Regression
 ## Step 1. Load Data and Train-Test Split
-In this step, we loaded the data and splitted the original dataset to training set(80%) and test set(20%)
+In this step, we loaded the data and splitted the original dataset to training set(80%) and test set(20%). Also, we add a new variable, which will be used and explained in the next model section.
 ```{r}
 data <- read.csv("../data/ml-latest-small/ratings.csv")
+# Convert timestamp and set up time difference
+data$timestamp <- anydate(data$timestamp)
+data <- data %>% 
+  group_by(userId) %>% 
+  mutate(timediff = (timestamp - mean(timestamp)) %>% as.numeric) %>% 
+  ungroup() %>%
+  arrange(timestamp)
+
 set.seed(1)
 
 # train-test split (.8/.2)
 train_ind <- createDataPartition(data$userId, p=.8, list=F)
 
-train <- data[train_ind, ]
-test <- data[-train_ind, ]
+
+data_train <- data[train_ind, ]
+data_test <- data[-train_ind, ]
 ```
 
 ## Step 2. Model Setup
@@ -133,47 +142,33 @@ x[which.min(x$test_mean),]
 ```
 ### 4. Optimal Model
  - Model Fitting
+ 
 Here, we fit the ALS with post-processing, KRR
 ```{r, eval=FALSE}
 set.seed(1)
 cl <- makeCluster(4)
 
-alsP3Result <- ALS_KRR(data, train, test, f=15, maxIters=10, lambda_als=10, lambda_p=1, sigma=1)
+alsP3Result <- ALS_KRR(data, train, test, f=15, maxIters=10, 
+                       lambda_als=10, lambda_p=1, sigma=1)
 
 stopCluster(cl)
 save(alsP3Result,file = "../output/alsP3Result.RData")
 ```
  - Model Evaluation
+ 
  The final result of our model 1 is
 ```{r ALS with KRR result}
 load(file="../output/alsP3Result.RData")
-cat("RMSE for train set:", round(alsP3Result$train_RMSE, 4), "  RMSE for test set:", round(alsP3Result$test_RMSE, 4))
+cat("RMSE for train set:", round(alsP3Result$train_RMSE, 4), 
+    "  RMSE for test set:", round(alsP3Result$test_RMSE, 4))
 ```
 
 
 #Model 2:Alternating Least Squares + Penalty of magnitudes + Temporal Dynamics + Kernel Ridge Regression
 
 ## Step 1. Load Data and Train-Test Split
-In this step, we loaded the data and added variable timediff for temporal dynamics, which is the difference between the user's rating time and the average rating time of this user. Then we splitted the original dataset to training set(80%) and test set(20%)
-```{r}
-data <- read.csv("../data/ml-latest-small/ratings.csv")
-# Convert timestamp and set up time difference
-data$timestamp <- anydate(data$timestamp)
-data <- data %>% 
-  group_by(userId) %>% 
-  mutate(timediff = (timestamp - mean(timestamp)) %>% as.numeric) %>% 
-  ungroup() %>%
-  arrange(timestamp)
+We added variable timediff for temporal dynamics, which is the difference between the user's rating time and the average rating time of this user. 
 
-set.seed(1)
-
-# train-test split (.8/.2)
-train_ind <- createDataPartition(data$userId, p=.8, list=F)
-
-
-data_train <- data[train_ind, ]
-data_test <- data[-train_ind, ]
-```
 
 ## Step 2. Model Setup
 ### 1. Equations recap
@@ -297,11 +292,13 @@ arp_result[which.min(arp_result$test_mean),]
 
 ### 4. Optimal Model
  - Model Fitting
+ 
  To see the how ALS with R1R3 works, we first conducted the matrix factorization separately
 ```{r ALS with R1R3, eval=FALSE}
-ALS with R1R3
+# ALS with R1R3
 cl = makeCluster(8)
-ALS.R1R3.model <- ALS.R1R3(f = 15, lambda = 1, beta = 0.2, maxIters = 15 , data = data,train = data_train, test = data_test)
+ALS.R1R3.model <- ALS.R1R3(f = 15, lambda = 1, beta = 0.2, maxIters = 15, 
+                           data = data,train = data_train, test = data_test)
 stopCluster(cl)
 save(ALS.R1R3.model, file="../output/ALS_R1R3_model.RData")
 stopCluster(cl)
@@ -319,25 +316,54 @@ g1
 Here, we fit the complete model with post-processing, KRR
 ```{r ALS with R1R3 With KRR, eval=FALSE}
 cl = makeCluster(8)
-ALS.R1R3.KRR.model <- ALS_R_KRR(data, data_train, data_test, f = 15, maxIters = 15, lambda_als = 1, lambda_p = 1, sigma = 1,beta = 0.2)
+ALS.R1R3.KRR.model <- ALS_R_KRR(data, data_train, data_test, f = 15, maxIters = 15, 
+                                lambda_als = 1, lambda_p = 1, sigma = 1,beta = 0.2)
 stopCluster(cl)
 save(ALS.R1R3.KRR.model, file="../output/ALS_R1R3_KRR_model.RData")
 
 stopCluster(cl)
 ```
  - Model Evaluation
+ 
  We can see that when we add post-processing to the matrix factorization, the performance decrease.
  The final result of our model 2 is
 ```{r ALS with R1R3 and KRR result}
 load(file="../output/ALS_R1R3_KRR_model.RData")
-cat("RMSE for train set:", round(ALS.R1R3.KRR.model$train_RMSE, 4), "  RMSE for test set:", round(ALS.R1R3.KRR.model$test_RMSE, 4))
+cat("RMSE for train set:", round(ALS.R1R3.KRR.model$train_RMSE, 4), 
+    "  RMSE for test set:", round(ALS.R1R3.KRR.model$test_RMSE, 4))
 ```
- 
-# Summary
-|   | A3 + KRR | A3 +R1R3 + KRR|  
-| ------ | ------ | ------ | 
-| training RMSE | 0.6225 | 0.5002 | 
-| test RMSE | 0.9773 | 1.2418 |
-By comparing RMSEs, we know that, given (A3+P3), adding (R1+R3) tends to overfit. With (R1+R3), the training RMSE is lower but the test RMSE is higher. Thus, adding (R1+R3) may do harm to the robustness and accuracy of (A3+P3).
+ We noticed that without P3, the matrix factorization alone performs better. With our previous attempts, we chose the following parameters. (We also noticed that the optimal parameters for matrix factorization are different with or without the post-processing)
+```{r R1R3 only, eval=FALSE}
+set.seed(1)
+cl = makeCluster(8)
+ALS.R1R3.only <- ALS.R1R3(f = 10, lambda = 10, beta = 0.4, maxIters = 15 , data = data,
+                          train = data_train, test = data_test)
+stopCluster(cl)
+save(ALS.R1R3.only, file="../output/ALS_R1R3_only.RData")
+stopCluster(cl)
+```
+Visualization of training and test RMSE by different iterations
+```{r ALS with R1R3 only plot}
+load(file="../output/ALS_R1R3_only.RData")
+g2 <- data.frame(iteration = c(1:15),Training_MSE = ALS.R1R3.only$`Train RMSE`,
+                 Test_MSE = ALS.R1R3.only$`Test RMSE`) %>%
+  gather(key = Train_Test,value = RMSE,-iteration) %>%
+  ggplot(aes(x = iteration, y = RMSE, col = Train_Test)) + geom_point() +
+  theme_light()
+g2
+```
+We can see, without post-processing, the regularization can significantly reduce the RMSE in the second iteration. The final result is
+```{r ALS with R1R3 only result}
+load(file="../output/ALS_R1R3_only.RData")
+cat("RMSE for train set:", round((ALS.R1R3.only$`Train RMSE`)[15], 4), 
+    "  RMSE for test set:", round((ALS.R1R3.only$`Test RMSE`)[15], 4))
+```
 
+# Summary
+|   | A3 + KRR | A3 + R1R3 + KRR| A3 + R1R3 |
+| ------ | :------: | :------: | :------: | 
+| training RMSE | 0.6216 | 0.5002 | 0.6509 |
+| test RMSE | 0.9698 | 1.2418 | 0.851 |
+
+By comparing RMSEs, we know that, given (A3+P3), adding (R1+R3) tends to overfit. With (R1+R3), the training RMSE is lower but the test RMSE is higher. But without KRR, (A3 + R1R3) performs better than (A3 + KRR). (A3 + R1R3) is the most robust model, with a higher training MSE but lower test RMSE. Thus, we think KRR and R1R3 may not work well together, but can improve the original matrix factorization separately. 
 
