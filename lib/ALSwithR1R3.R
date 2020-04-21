@@ -173,8 +173,10 @@ ALS.R1R3 <- function(f = 10, lambda = 5, beta = 0.4, maxIters = 5, data = data,
     est_rating <- as.matrix(R)
     colnames(est_rating)<-MovieId
     rownames(est_rating)<-UserId
-    trainRMSE[iter] <- RMSE_R(train, est_rating)
-    testRMSE[iter] <- RMSE_R(test, est_rating)
+    train_mat <- train[, 1:3] %>% as.matrix()
+    test_mat <- test[,1:3] %>% as.matrix()
+    trainRMSE[iter] <- RMSE_R(train_mat, est_rating)
+    testRMSE[iter] <- RMSE_R(test_mat, est_rating)
     
     E = Sys.time()
     
