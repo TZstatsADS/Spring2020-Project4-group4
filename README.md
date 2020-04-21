@@ -21,6 +21,7 @@ Please see [main_final_group4.pdf](doc/main_final_group4.pdf) for final report.
 	
 **Contribution statement**: [default] All team members listed above discussed the work of this project. 
 For the algorithms, Yuqiao Liu worked on ALS + KRR functions and conducted them on the dataset. Hanbo Jiao and Jinxu Xiang worked on ALS + R1R3 + KRR functoins and conducted them on the dataset. Huize Huang helped them conduct the functions on the dataset. 
+
 For the other work, Guoying Li contriubted to the main_basic.Rmd. Huize integrated the codes of the final main file, with Yuqiao and Hanbo providing some edits. Hanbo worked on the presentation slides. Huize contributed to the readme file on GitHub. All team members contributed to the GitHub files organizations.
 
 Following [suggestions](http://nicercode.github.io/blog/2013-04-05-projects/) by [RICH FITZJOHN](http://nicercode.github.io/about/#Team) (@richfitz). This folder is orgarnized as follows.
