@@ -1,10 +1,11 @@
 # Solve RMSE
 RMSE <- function(rating, est_rating){
-  sqr_err <- function(obs){
-    sqr_error <- (obs[3] - est_rating[as.character(obs[1]), as.character(obs[2])])^2
+  sqr_err <- function(id){
+    sqr_error <- (as.numeric(rating[id,3]) - est_rating[as.character(rating[id,1]), as.character(rating[id,2])])^2
     return(sqr_error)
   }
-  return(sqrt(mean(apply(rating, 1, sqr_err))))  
+  error <- sapply(1:nrow(rating), sqr_err)
+  return(sqrt(mean(error)))
 }
 
 minFunc <- function(rating, matSolv, lambda){
@@ -205,9 +206,6 @@ KRR.Post_R <- function (result_ALS, lambda = 10,sigma=1.5, data, train, test) {
   norm.X_full <- t(norm.row(X_full))
   norm.X_full[is.na(norm.X_full)] <- 0
   
-  
-  
-  cl <- makeCluster(4)
   
   clusterExport(cl, "train", envir = environment())
   clusterExport(cl, "norm.X_full", envir = environment())
