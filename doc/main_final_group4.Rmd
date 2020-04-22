@@ -291,9 +291,8 @@ ALS.R1R3.KRR.model <- ALS_R_KRR(data, data_train, data_test, f = 15,
                                 sigma = 1, beta = 0.2)
 stopCluster(cl)
 save(ALS.R1R3.KRR.model, file="../output/ALS_R1R3_KRR_model.RData")
-
-stopCluster(cl)
 ```
+
  - Model Evaluation
  We can see that when we add post-processing to the matrix factorization, the performance decrease.
  The final result of our model 2 is
